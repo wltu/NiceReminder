@@ -3,6 +3,7 @@ package com.example.android.nicereminder;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -16,15 +17,18 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 public class MainActivity extends AppCompatActivity {
     private Context context;
     private Activity activity = this;
     private Button update;
+    private Button login;
     private TextView text;
     private LocationManager locationManager;
     private LocationListener locationListener;
     private boolean SearchLocation;
-    private boolean startApp;
 
     // Saved Data Information.
     public static final String SHARDED_PREFS = "sharedPref";
@@ -49,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         SearchLocation = false;
-        startApp = false;
+
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
@@ -84,8 +88,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        login = (Button)findViewById(R.id.login);
+        login.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, DatabaseActivity.class));
+            }
+        });
+
         loadData();
     }
+
 
     @Override
     protected void onDestroy() {
