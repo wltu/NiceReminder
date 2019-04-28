@@ -180,6 +180,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             if (!task.isSuccessful()) {
                                 Toast.makeText(LoginActivity.this, "Authentication Failed",
                                         Toast.LENGTH_SHORT).show();
+                            }else{
+                                MainScreen.UpdateAccountStatus(true);
                             }
                         }
                     });

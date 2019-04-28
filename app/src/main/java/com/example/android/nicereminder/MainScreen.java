@@ -28,6 +28,7 @@ import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -75,6 +76,15 @@ public class MainScreen extends AppCompatActivity
     private StorageReference mStorageRef;
 
     private File localFile = null;
+
+    // Account Variables
+    private Menu menu;
+    private Menu navMenu;
+    private static MenuItem signin;
+    private static MenuItem signin_setting;
+    private static MenuItem signout;
+    private static MenuItem signout_setting;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -109,6 +119,13 @@ public class MainScreen extends AppCompatActivity
         upload = (Button)findViewById(R.id.upload);
         download = (Button)findViewById(R.id.download);
         image = (ImageView)findViewById(R.id.image);
+
+        navMenu = ((NavigationView)findViewById(R.id.nav_view)).getMenu();
+
+        signin = navMenu.findItem(R.id.nav_signin);
+
+        signout = navMenu.findItem(R.id.nav_signout);
+
 
         context = getApplicationContext();
 
@@ -161,7 +178,6 @@ public class MainScreen extends AppCompatActivity
         upload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainScreen.this, LoginActivity.class));
                 myRef.setValue(currentLocation);
             }
         });
@@ -208,16 +224,7 @@ public class MainScreen extends AppCompatActivity
 
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
-        FirebaseUser user = mAuth.getCurrentUser();
 
-        if(user == null){
-            startActivity(new Intent(MainScreen.this, LoginActivity.class));
-        }else{
-            // User is signed in
-            if(user.getEmail().isEmpty()){
-                startActivity(new Intent(MainScreen.this, LoginActivity.class));
-            }
-        }
 
         database = FirebaseDatabase.getInstance();
         myRef = database.getReference("Test");
@@ -253,9 +260,30 @@ public class MainScreen extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
+
         getMenuInflater().inflate(R.menu.main_screen, menu);
+
+        this.menu = menu;
+
+        signin_setting = menu.findItem(R.id.action_settings);
+        signout_setting = menu.findItem(R.id.action_signout);
+
+
+        FirebaseUser user = mAuth.getCurrentUser();   
+        if(user == null){                                                                       
+            startActivity(new Intent(MainScreen.this, LoginActivity.class));                    
+        }else{                                                                                  
+            // User is signed in                                                                
+            if(user.getEmail().isEmpty()){                                                      
+                startActivity(new Intent(MainScreen.this, LoginActivity.class));                
+            }else{                                                                              
+                UpdateAccountStatus(true);                                                      
+            }                                                                                   
+        }                                                                                       
+
         return true;
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -265,12 +293,21 @@ public class MainScreen extends AppCompatActivity
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
+        switch(id) {
+            case R.id.action_settings:
+                return true;
+            case R.id.action_signout:
+                SignOut();
 
-        return super.onOptionsItemSelected(item);
+                return true;
+            case R.id.action_signin:
+                startActivity(new Intent(MainScreen.this, LoginActivity.class));
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
+
+
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
@@ -286,10 +323,10 @@ public class MainScreen extends AppCompatActivity
 
         } else if (id == R.id.nav_manage) {
 
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-            mAuth.signOut();
+        } else if (id == R.id.nav_signin) {
+            startActivity(new Intent(MainScreen.this, LoginActivity.class));
+        } else if (id == R.id.nav_signout) {
+            SignOut();
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -333,5 +370,21 @@ public class MainScreen extends AppCompatActivity
         }
 
         text.setText(sharedPreferences.getString(LOCATION, "Hello World!"));
+    }
+
+    private void SignOut(){
+        mAuth.signOut();
+
+        UpdateAccountStatus(false);
+
+        Toast.makeText(getApplicationContext(), "Signed Out", Toast.LENGTH_SHORT).show();
+    }
+
+    public static void UpdateAccountStatus(boolean signined){
+
+        signin_setting.setVisible(!signined);
+        signin.setVisible(!signined);
+        signout_setting.setVisible(signined);
+        signout.setVisible(signined);
     }
 }
