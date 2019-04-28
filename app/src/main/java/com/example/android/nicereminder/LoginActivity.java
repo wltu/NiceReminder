@@ -89,11 +89,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
+            FirebaseUser user = firebaseAuth.getCurrentUser();
 
-                if(user != null){
-                    finish();
-                }
+            if(user != null){
+                finish();
+            }
             }
         };
 
@@ -136,7 +136,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mPasswordView.setError(null);
 
         // Store values at the time of the login attempt.
-        String email = mEmailView.getText().toString();
+        final String email = mEmailView.getText().toString();
         String password = mPasswordView.getText().toString();
 
         boolean cancel = false;
@@ -180,6 +180,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             if (!task.isSuccessful()) {
                                 Toast.makeText(LoginActivity.this, "Authentication Failed",
                                         Toast.LENGTH_SHORT).show();
+                                showProgress(false);
                             }else{
                                 MainScreen.UpdateAccountStatus(true);
                             }

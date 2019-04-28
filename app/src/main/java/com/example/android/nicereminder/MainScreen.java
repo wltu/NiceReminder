@@ -27,6 +27,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +50,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+// TODO: Profile Pictures
+/*
+    Allow user to access photo local photo gallery to set as profile
+    Add sign up option with name...
+ */
+
 public class MainScreen extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -70,12 +77,12 @@ public class MainScreen extends AppCompatActivity
     public static final String LOCATION_ON = "location_on";
 
     private String currentLocation;
-    private FirebaseAuth mAuth;
-    private FirebaseDatabase database;
+    private static FirebaseAuth mAuth;
+    private static FirebaseDatabase database;
     private DatabaseReference myRef;
-    private StorageReference mStorageRef;
+    private static StorageReference mStorageRef;
 
-    private File localFile = null;
+    private static File localFile = null;
 
     // Account Variables
     private Menu menu;
@@ -84,6 +91,10 @@ public class MainScreen extends AppCompatActivity
     private static MenuItem signin_setting;
     private static MenuItem signout;
     private static MenuItem signout_setting;
+    private static ImageView user_image;
+    private static TextView user_name;
+    private static TextView user_email;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,10 +132,14 @@ public class MainScreen extends AppCompatActivity
         image = (ImageView)findViewById(R.id.image);
 
         navMenu = ((NavigationView)findViewById(R.id.nav_view)).getMenu();
-
         signin = navMenu.findItem(R.id.nav_signin);
-
         signout = navMenu.findItem(R.id.nav_signout);
+
+        LinearLayout layout = (LinearLayout) (((NavigationView)findViewById(R.id.nav_view)).getHeaderView(0));
+        user_image = (ImageView) layout.getChildAt(0);
+                //(ImageView)findViewById(R.id.user_image);
+        user_name = (TextView)layout.getChildAt(1);
+        user_email = (TextView)layout.getChildAt(2);
 
 
         context = getApplicationContext();
@@ -188,10 +203,10 @@ public class MainScreen extends AppCompatActivity
 
                 try {
 
-                    StorageReference riversRef = mStorageRef.child("tzuyu.jpg");
+                    StorageReference ref = mStorageRef.child("tzuyu.jpg");
                     localFile = File.createTempFile("tzuyu", "jpg");
 
-                    riversRef.getFile(localFile)
+                    ref.getFile(localFile)
                             .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
                                 @Override
                                 public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
@@ -229,6 +244,7 @@ public class MainScreen extends AppCompatActivity
         database = FirebaseDatabase.getInstance();
         myRef = database.getReference("Test");
 
+
         myRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -265,7 +281,7 @@ public class MainScreen extends AppCompatActivity
 
         this.menu = menu;
 
-        signin_setting = menu.findItem(R.id.action_settings);
+        signin_setting = menu.findItem(R.id.action_signin);
         signout_setting = menu.findItem(R.id.action_signout);
 
 
@@ -386,5 +402,59 @@ public class MainScreen extends AppCompatActivity
         signin.setVisible(!signined);
         signout_setting.setVisible(signined);
         signout.setVisible(signined);
+
+        if(signined){
+            String email = mAuth.getCurrentUser().getEmail();
+            user_email.setText(email);
+
+            String temp = email.replace('.', ' ');
+            DatabaseReference ref = database.getReference(temp);
+
+            ref.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // This method is called once with the initial value and again
+                    // whenever data at this location is updated.
+                    user_name.setText(dataSnapshot.getValue(String.class));
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+
+                }
+            });
+
+
+            try {
+
+                StorageReference mref = mStorageRef.child("User/" + email +  "/profile.jpg");
+                localFile = File.createTempFile("profile", "jpg");
+
+                mref.getFile(localFile)
+                        .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                // Successfully downloaded data to local file
+                                // ...
+                                try {
+                                    user_image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(localFile)));
+                                } catch (FileNotFoundException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception exception) {
+                        // Handle failed download
+                        // ...
+
+                        Log.e("ERROR", "Download Failed!");
+                    }
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
     }
 }
