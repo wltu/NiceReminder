@@ -36,6 +36,8 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +49,7 @@ import java.util.List;
 public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
     // UI references.
     private AutoCompleteTextView mEmailView;
+    private EditText mNameView;
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
@@ -97,12 +100,20 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         };
 
+        mNameView = (EditText) findViewById(R.id.name);
+
         mPasswordView = (EditText) findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                attemptLogin();
+
+                if(getIntent().getBooleanExtra("Signup", false)){
+                    attemptSignup();
+                }else{
+                    attemptLogin();
+                }
+
                 return true;
             }
             return false;
@@ -117,8 +128,98 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
+        Button mEmailSignUpButton = (Button) findViewById(R.id.email_sign_up_button);
+        mEmailSignUpButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                attemptSignup();
+            }
+        });
+
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        if(getIntent().getBooleanExtra("Signup", false)){
+            mEmailSignInButton.setVisibility(View.GONE);
+
+            mNameView.setVisibility(View.VISIBLE);
+            mEmailSignUpButton.setVisibility(View.VISIBLE);
+        }else{
+            mEmailSignInButton.setVisibility(View.VISIBLE);
+
+            mNameView.setVisibility(View.GONE);
+            mEmailSignUpButton.setVisibility(View.GONE);
+        }
+    }
+
+    // Sign Up New User
+    private void attemptSignup() {
+
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            return;
+        }
+
+        // Reset errors.
+        mEmailView.setError(null);
+        mPasswordView.setError(null);
+
+        // Store values at the time of the login attempt.
+        final String email = mEmailView.getText().toString();
+        String password = mPasswordView.getText().toString();
+
+        boolean cancel = false;
+        View focusView = null;
+
+        // Check for a valid password, if the user entered one.
+        if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
+            mPasswordView.setError(getString(R.string.error_invalid_password));
+            focusView = mPasswordView;
+            cancel = true;
+        }
+
+        // Check for a valid email address.
+        if (TextUtils.isEmpty(email)) {
+            mEmailView.setError(getString(R.string.error_field_required));
+            focusView = mEmailView;
+            cancel = true;
+        } else if (!isEmailValid(email)) {
+            mEmailView.setError(getString(R.string.error_invalid_email));
+            focusView = mEmailView;
+            cancel = true;
+        }
+
+        if (cancel) {
+            // There was an error; don't attempt login and focus the first
+            // form field with an error.
+            focusView.requestFocus();
+        } else if(!TextUtils.isEmpty(password)){
+            // Show a progress spinner, and kick off a background task to
+            // perform the user login attempt.
+
+            showProgress(true);
+
+            mAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            FirebaseDatabase database = FirebaseDatabase.getInstance();
+                            DatabaseReference myRef = database.getReference(mAuth.getCurrentUser().getEmail().replace('.', ' '));
+
+                            myRef.setValue(mNameView.getText().toString());
+
+                            MainScreen.UpdateAccountStatus(true);
+                        } else {
+                            Toast.makeText(LoginActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+
+                            showProgress(false);
+                        }
+
+                    }
+                });
+        }
     }
 
     /**

@@ -88,6 +88,8 @@ public class MainScreen extends AppCompatActivity
     private Menu menu;
     private Menu navMenu;
     private static MenuItem signin;
+    private static MenuItem signup_setting;
+    private static MenuItem signup;
     private static MenuItem signin_setting;
     private static MenuItem signout;
     private static MenuItem signout_setting;
@@ -134,10 +136,10 @@ public class MainScreen extends AppCompatActivity
         navMenu = ((NavigationView)findViewById(R.id.nav_view)).getMenu();
         signin = navMenu.findItem(R.id.nav_signin);
         signout = navMenu.findItem(R.id.nav_signout);
+        signup = navMenu.findItem(R.id.nav_signup);
 
         LinearLayout layout = (LinearLayout) (((NavigationView)findViewById(R.id.nav_view)).getHeaderView(0));
         user_image = (ImageView) layout.getChildAt(0);
-                //(ImageView)findViewById(R.id.user_image);
         user_name = (TextView)layout.getChildAt(1);
         user_email = (TextView)layout.getChildAt(2);
 
@@ -281,17 +283,20 @@ public class MainScreen extends AppCompatActivity
 
         this.menu = menu;
 
+        signup_setting = menu.findItem(R.id.action_signup);
         signin_setting = menu.findItem(R.id.action_signin);
         signout_setting = menu.findItem(R.id.action_signout);
 
 
         FirebaseUser user = mAuth.getCurrentUser();   
         if(user == null){                                                                       
-            startActivity(new Intent(MainScreen.this, LoginActivity.class));                    
+            //startActivity(new Intent(MainScreen.this, LoginActivity.class));
+            UpdateAccountStatus(false);
         }else{                                                                                  
             // User is signed in                                                                
             if(user.getEmail().isEmpty()){                                                      
-                startActivity(new Intent(MainScreen.this, LoginActivity.class));                
+                //startActivity(new Intent(MainScreen.this, LoginActivity.class));
+                UpdateAccountStatus(false);
             }else{                                                                              
                 UpdateAccountStatus(true);                                                      
             }                                                                                   
@@ -308,6 +313,7 @@ public class MainScreen extends AppCompatActivity
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
+        Intent intent;
         //noinspection SimplifiableIfStatement
         switch(id) {
             case R.id.action_settings:
@@ -317,7 +323,17 @@ public class MainScreen extends AppCompatActivity
 
                 return true;
             case R.id.action_signin:
-                startActivity(new Intent(MainScreen.this, LoginActivity.class));
+                intent = new Intent(MainScreen.this, LoginActivity.class);
+                intent.putExtra("Signup", false);
+                startActivity(intent);
+
+                return true;
+            case R.id.action_signup:
+                intent = new Intent(MainScreen.this, LoginActivity.class);
+                intent.putExtra("Signup", true);
+                startActivity(intent);
+
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -398,6 +414,8 @@ public class MainScreen extends AppCompatActivity
 
     public static void UpdateAccountStatus(boolean signined){
 
+        signup.setVisible(!signined);
+        signup_setting.setVisible(!signined);
         signin_setting.setVisible(!signined);
         signin.setVisible(!signined);
         signout_setting.setVisible(signined);
@@ -445,10 +463,7 @@ public class MainScreen extends AppCompatActivity
                         }).addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception exception) {
-                        // Handle failed download
-                        // ...
-
-                        Log.e("ERROR", "Download Failed!");
+                        user_image.setImageResource(R.mipmap.ic_launcher_round);
                     }
                 });
             } catch (IOException e) {
