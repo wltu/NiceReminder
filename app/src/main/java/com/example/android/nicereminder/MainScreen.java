@@ -2,6 +2,7 @@ package com.example.android.nicereminder;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.FragmentManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -15,6 +16,7 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+
 import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -59,14 +61,9 @@ import java.io.IOException;
 public class MainScreen extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
-    private Context context;
+    private static FragmentManager fragmentManager;
+    private static Context context;
     private Activity activity = this;
-    private Button update;
-    private Button upload;
-    private Button download;
-    private TextView cloudText;
-    private TextView text;
-    private ImageView image;
     private LocationManager locationManager;
     private LocationListener locationListener;
     private boolean SearchLocation;
@@ -82,10 +79,10 @@ public class MainScreen extends AppCompatActivity
     private DatabaseReference myRef;
     private static StorageReference mStorageRef;
 
-    private static File localFile = null;
+    private static File profileFile = null;
 
     // Account Variables
-    private Menu menu;
+    private NavigationView navigationView;
     private Menu navMenu;
     private static MenuItem signin;
     private static MenuItem signup_setting;
@@ -97,13 +94,14 @@ public class MainScreen extends AppCompatActivity
     private static TextView user_name;
     private static TextView user_email;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        fragmentManager = getFragmentManager();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -120,25 +118,20 @@ public class MainScreen extends AppCompatActivity
         drawer.addDrawerListener(toggle);
         toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
 
         currentLocation = "";
 
-        text = (TextView) findViewById(R.id.text);
-        cloudText = (TextView) findViewById(R.id.cloud);
-        update = (Button) findViewById(R.id.button);
-        upload = (Button)findViewById(R.id.upload);
-        download = (Button)findViewById(R.id.download);
-        image = (ImageView)findViewById(R.id.image);
 
-        navMenu = ((NavigationView)findViewById(R.id.nav_view)).getMenu();
+        navMenu = navigationView.getMenu();
         signin = navMenu.findItem(R.id.nav_signin);
         signout = navMenu.findItem(R.id.nav_signout);
         signup = navMenu.findItem(R.id.nav_signup);
 
-        LinearLayout layout = (LinearLayout) (((NavigationView)findViewById(R.id.nav_view)).getHeaderView(0));
+
+        LinearLayout layout = (LinearLayout) (navigationView).getHeaderView(0);
         user_image = (ImageView) layout.getChildAt(0);
         user_name = (TextView)layout.getChildAt(1);
         user_email = (TextView)layout.getChildAt(2);
@@ -163,7 +156,6 @@ public class MainScreen extends AppCompatActivity
         locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
                 currentLocation = location.getLatitude() + " : " + location.getLongitude();
-                text.setText(currentLocation);
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -176,66 +168,7 @@ public class MainScreen extends AppCompatActivity
             }
         };
 
-        update.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                SearchLocation = !SearchLocation;
 
-                // Register the listener with the Location Manager to receive location updates
-                if(SearchLocation){
-                    requestLocation();
-                }else{
-                    locationManager.removeUpdates(locationListener);
-                    text.setText("OK");
-                }
-            }
-        });
-
-
-        upload.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                myRef.setValue(currentLocation);
-            }
-        });
-
-        download.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                try {
-
-                    StorageReference ref = mStorageRef.child("tzuyu.jpg");
-                    localFile = File.createTempFile("tzuyu", "jpg");
-
-                    ref.getFile(localFile)
-                            .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-                                @Override
-                                public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                    // Successfully downloaded data to local file
-                                    // ...
-                                    try {
-                                        image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(localFile)));
-                                    } catch (FileNotFoundException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }).addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception exception) {
-                            // Handle failed download
-                            // ...
-
-                            Log.e("ERROR", "Download Failed!");
-                        }
-                    });
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-
-            }
-        });
 
         loadData();
 
@@ -244,25 +177,28 @@ public class MainScreen extends AppCompatActivity
 
 
         database = FirebaseDatabase.getInstance();
-        myRef = database.getReference("Test");
 
-
-        myRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                // This method is called once with the initial value and again
-                // whenever data at this location is updated.
-                String value = dataSnapshot.getValue(String.class);
-                cloudText.setText(value);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-
-            }
-        });
+//        myRef = database.getReference("Test");
+//
+//
+//        myRef.addValueEventListener(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                // This method is called once with the initial value and again
+//                // whenever data at this location is updated.
+//                String value = dataSnapshot.getValue(String.class);
+//
+//            }
+//
+//            @Override
+//            public void onCancelled(DatabaseError error) {
+//
+//            }
+//        });
 
         mStorageRef = FirebaseStorage.getInstance().getReference();
+
+
     }
 
     @Override
@@ -280,8 +216,6 @@ public class MainScreen extends AppCompatActivity
         // Inflate the menu; this adds items to the action bar if it is present.
 
         getMenuInflater().inflate(R.menu.main_screen, menu);
-
-        this.menu = menu;
 
         signup_setting = menu.findItem(R.id.action_signup);
         signin_setting = menu.findItem(R.id.action_signin);
@@ -317,6 +251,12 @@ public class MainScreen extends AppCompatActivity
         //noinspection SimplifiableIfStatement
         switch(id) {
             case R.id.action_settings:
+                if(mAuth.getCurrentUser() != null){
+                    navigationView.setCheckedItem(R.id.nav_manage);
+                    //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+                    getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+                }
+
                 return true;
             case R.id.action_signout:
                 SignOut();
@@ -339,13 +279,12 @@ public class MainScreen extends AppCompatActivity
         }
     }
 
-
-
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
+        Intent intent;
 
         if (id == R.id.nav_camera) {
             // Handle the camera action
@@ -354,11 +293,23 @@ public class MainScreen extends AppCompatActivity
         } else if (id == R.id.nav_slideshow) {
 
         } else if (id == R.id.nav_manage) {
+            if(mAuth.getCurrentUser() != null){
+                //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
 
+                getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+            }
         } else if (id == R.id.nav_signin) {
-            startActivity(new Intent(MainScreen.this, LoginActivity.class));
+            intent = new Intent(MainScreen.this, LoginActivity.class);
+            intent.putExtra("Signup", false);
+            startActivity(intent);
+
         } else if (id == R.id.nav_signout) {
             SignOut();
+        } else if(id == R.id.nav_signup){
+            intent = new Intent(MainScreen.this, LoginActivity.class);
+            intent.putExtra("Signup", true);
+            startActivity(intent);
+
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -368,13 +319,13 @@ public class MainScreen extends AppCompatActivity
 
     @Override
     protected void onDestroy() {
-        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
+//        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+//        SharedPreferences.Editor editor = sharedPreferences.edit();
+//
+//        editor.putString(LOCATION, text.getText().toString());
+//        editor.putBoolean(LOCATION_ON, SearchLocation);
 
-        editor.putString(LOCATION, text.getText().toString());
-        editor.putBoolean(LOCATION_ON, SearchLocation);
-
-        editor.commit();
+//        editor.commit();
 
         //mAuth.signOut();
 
@@ -382,7 +333,6 @@ public class MainScreen extends AppCompatActivity
     }
 
     private void requestLocation(){
-        text.setText("Search...");
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
@@ -393,27 +343,18 @@ public class MainScreen extends AppCompatActivity
     }
 
     private void loadData(){
-        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-
-        SearchLocation = sharedPreferences.getBoolean(LOCATION_ON, false);
-
-        if(SearchLocation){
-            requestLocation();
-        }
-
-        text.setText(sharedPreferences.getString(LOCATION, "Hello World!"));
-    }
-
-    private void SignOut(){
-        mAuth.signOut();
-
-        UpdateAccountStatus(false);
-
-        Toast.makeText(getApplicationContext(), "Signed Out", Toast.LENGTH_SHORT).show();
+//        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+//
+//        SearchLocation = sharedPreferences.getBoolean(LOCATION_ON, false);
+//
+//        if(SearchLocation){
+//            requestLocation();
+//        }
+//
+//        text.setText(sharedPreferences.getString(LOCATION, "Hello World!"));
     }
 
     public static void UpdateAccountStatus(boolean signined){
-
         signup.setVisible(!signined);
         signup_setting.setVisible(!signined);
         signin_setting.setVisible(!signined);
@@ -443,33 +384,85 @@ public class MainScreen extends AppCompatActivity
             });
 
 
-            try {
+            if(profileFile == null){
+                try {
+                    StorageReference mref = mStorageRef.child("User/" + email +  "/profile.jpg");
+                    profileFile = File.createTempFile("profile", "jpg");
 
-                StorageReference mref = mStorageRef.child("User/" + email +  "/profile.jpg");
-                localFile = File.createTempFile("profile", "jpg");
-
-                mref.getFile(localFile)
-                        .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-                            @Override
-                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                // Successfully downloaded data to local file
-                                // ...
-                                try {
-                                    user_image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(localFile)));
-                                } catch (FileNotFoundException e) {
-                                    e.printStackTrace();
+                    mref.getFile(profileFile)
+                            .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                    // Successfully downloaded data to local file
+                                    // ...
+                                    try {
+                                        user_image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(profileFile)));
+                                    } catch (FileNotFoundException e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception exception) {
-                        user_image.setImageResource(R.mipmap.ic_launcher_round);
-                    }
-                });
-            } catch (IOException e) {
-                e.printStackTrace();
+                            }).addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception exception) {
+                            user_image.setImageResource(R.mipmap.ic_launcher_round);
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }else{
+                try {
+                    user_image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(profileFile)));
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
             }
+        }else{
+            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
 
+            user_image.setImageResource(R.mipmap.ic_launcher_round);
+            user_name.setText(R.string.nav_header_title);
+            user_email.setText(R.string.nav_header_subtitle);
         }
+    }
+
+    public static String getName(){
+        return user_name.getText().toString();
+    }
+
+    public static void updateName(String name){
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference myRef = database.getReference(mAuth.getCurrentUser().getEmail().replace('.', ' '));
+
+        myRef.setValue(name);
+
+        user_name.setText(name);
+
+
+        Toast.makeText(context, "Name Changed!", Toast.LENGTH_SHORT).show();
+    }
+
+    public static void SignOut(){
+
+        mAuth.signOut();
+        profileFile = null;
+        UpdateAccountStatus(false);
+
+        Toast.makeText(context, "Signed Out", Toast.LENGTH_SHORT).show();
+    }
+
+    public static void changePassword(String password){
+        mAuth.getCurrentUser().updatePassword(password);
+
+        Toast.makeText(context, "Password Changed!", Toast.LENGTH_SHORT).show();
+    }
+
+    public static void deleteAccount(){
+        mAuth.getCurrentUser().delete();
+        mAuth.signOut();
+        profileFile = null;
+
+        UpdateAccountStatus(false);
+        Toast.makeText(context, "Deleted Account!", Toast.LENGTH_SHORT).show();
     }
 }

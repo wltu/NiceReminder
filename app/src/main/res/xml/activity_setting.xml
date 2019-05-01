@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent">
+
+    <PreferenceCategory
+        android:title="General  ">
+    <Preference
+        android:title="@string/setting_change_profile_picture"
+        android:key="profile_picture"
+        android:summary="Update your profile picture"
+        />
+
+
+    <Preference android:title="Change Name"
+        android:key="name"
+        android:summary="Update your name"></Preference>
+
+    </PreferenceCategory>
+
+
+    <PreferenceCategory
+        android:title="Account">
+        <Preference
+            android:title="@string/action_signout"
+            android:key="signout"
+            android:summary="Signout of your account"
+            />
+        <Preference
+            android:title="@string/setting_change_password"
+            android:key="password"
+            android:summary="Update your password"
+            />
+
+        <Preference
+            android:title="@string/setting_delete_account"
+            android:key="delete"
+            android:summary="Delete of your account"
+            />
+    </PreferenceCategory>
+
+
+
+
+
+</PreferenceScreen>
+
+<!--<?xml version="1.0" encoding="utf-8"?>-->
+<!--<android.support.constraint.ConstraintLayout-->
+    <!--xmlns:android="http://schemas.android.com/apk/res/android"-->
+    <!--xmlns:app="http://schemas.android.com/apk/res-auto"-->
+    <!--xmlns:tools="http://schemas.android.com/tools"-->
+    <!--android:layout_width="match_parent"-->
+    <!--android:layout_height="match_parent">-->
+
+
+
+    <!--&lt;!&ndash;<ScrollView&ndash;&gt;-->
+        <!--&lt;!&ndash;android:layout_width="match_parent"&ndash;&gt;-->
+        <!--&lt;!&ndash;android:layout_height="match_parent">&ndash;&gt;-->
+
+        <!--&lt;!&ndash;<LinearLayout&ndash;&gt;-->
+            <!--&lt;!&ndash;android:layout_width="match_parent"&ndash;&gt;-->
+            <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
+            <!--&lt;!&ndash;android:orientation="vertical" >&ndash;&gt;-->
+
+
+            <!--&lt;!&ndash;<TextView&ndash;&gt;-->
+                <!--&lt;!&ndash;android:id="@+id/setting_change_profile_picture"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_width="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginStart="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginTop="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginEnd="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginBottom="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textStyle="bold"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:text="@string/setting_change_profile_picture"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textColor="@android:color/black"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textSize="24dp" />&ndash;&gt;-->
+
+            <!--&lt;!&ndash;<TextView&ndash;&gt;-->
+                <!--&lt;!&ndash;android:id="@+id/setting_change_name"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_width="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginStart="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginTop="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginEnd="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginBottom="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textStyle="bold"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:text="@string/setting_change_name"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textColor="@android:color/black"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textSize="24dp" />&ndash;&gt;-->
+
+
+            <!--&lt;!&ndash;<TextView&ndash;&gt;-->
+                <!--&lt;!&ndash;android:id="@+id/setting_signout"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_width="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginStart="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginTop="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginEnd="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginBottom="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:text="@string/action_signout"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textStyle="bold"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textColor="@android:color/black"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textSize="24dp" />&ndash;&gt;-->
+
+            <!--&lt;!&ndash;<TextView&ndash;&gt;-->
+                <!--&lt;!&ndash;android:id="@+id/setting_change_password"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_width="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginStart="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginTop="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginEnd="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginBottom="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textStyle="bold"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:text="@string/setting_change_password"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textColor="@color/red"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textSize="24dp" />&ndash;&gt;-->
+
+            <!--&lt;!&ndash;<TextView&ndash;&gt;-->
+                <!--&lt;!&ndash;android:id="@+id/setting_delete_account"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_width="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginStart="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginTop="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginEnd="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:layout_marginBottom="8dp"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textStyle="bold"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:text="@string/setting_delete_account"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textColor="@color/red"&ndash;&gt;-->
+                <!--&lt;!&ndash;android:textSize="24dp" />&ndash;&gt;-->
+
+
+        <!--&lt;!&ndash;</LinearLayout>&ndash;&gt;-->
+
+
+    <!--&lt;!&ndash;</ScrollView>&ndash;&gt;-->
+
+<!--</android.support.constraint.ConstraintLayout>-->
+
+

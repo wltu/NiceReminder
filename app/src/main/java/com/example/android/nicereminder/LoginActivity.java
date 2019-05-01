@@ -21,6 +21,7 @@ import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -62,6 +63,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -141,11 +144,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mProgressView = findViewById(R.id.login_progress);
 
         if(getIntent().getBooleanExtra("Signup", false)){
+            setTitle("Sign Up");
+
             mEmailSignInButton.setVisibility(View.GONE);
 
             mNameView.setVisibility(View.VISIBLE);
             mEmailSignUpButton.setVisibility(View.VISIBLE);
         }else{
+            setTitle("Sign In");
             mEmailSignInButton.setVisibility(View.VISIBLE);
 
             mNameView.setVisibility(View.GONE);
@@ -400,6 +406,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         if (mAuthListener != null) {
             mAuth.removeAuthStateListener(mAuthListener);
         }
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            finish();
+            return true;
+        }
+
+        return false;
     }
 }
 
