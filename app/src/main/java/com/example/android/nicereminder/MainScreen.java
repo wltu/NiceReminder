@@ -178,26 +178,36 @@ public class MainScreen extends AppCompatActivity
 
         database = FirebaseDatabase.getInstance();
 
-//        myRef = database.getReference("Test");
-//
-//
-//        myRef.addValueEventListener(new ValueEventListener() {
-//            @Override
-//            public void onDataChange(DataSnapshot dataSnapshot) {
-//                // This method is called once with the initial value and again
-//                // whenever data at this location is updated.
-//                String value = dataSnapshot.getValue(String.class);
-//
-//            }
-//
-//            @Override
-//            public void onCancelled(DatabaseError error) {
-//
-//            }
-//        });
-
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
+        FirebaseUser user = mAuth.getCurrentUser();
+        if(user != null && profileFile == null){
+            try {
+                StorageReference mref = mStorageRef.child("User/" + user.getEmail() +  "/profile.jpg");
+                profileFile = File.createTempFile("profile", "jpg");
+
+                mref.getFile(profileFile)
+                        .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                // Successfully downloaded data to local file
+                                // ...
+                                try {
+                                    user_image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(profileFile)));
+                                } catch (FileNotFoundException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception exception) {
+                        user_image.setImageResource(R.mipmap.ic_launcher_round);
+                    }
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
     }
 
