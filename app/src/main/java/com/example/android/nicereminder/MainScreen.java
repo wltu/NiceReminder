@@ -93,17 +93,15 @@ public class MainScreen extends AppCompatActivity
     public static final String LOCATION_ON = "location_on";
 
     private String currentLocation;
+
+    // Database Variables
     private static FirebaseAuth mAuth;
     private static FirebaseDatabase database;
-    private DatabaseReference myRef;
+    private static DatabaseReference dataref;
     private static StorageReference mStorageRef;
 
     private static File profileFile = null;
-    private ArrayList<File> imageGallery;
-    private ArrayList<String> fileNames;
-    private int index;
-    private File image;
-    private static DatabaseReference dataref;
+
 
     // Account Variables
     private NavigationView navigationView;
@@ -126,8 +124,6 @@ public class MainScreen extends AppCompatActivity
         setSupportActionBar(toolbar);
 
         files = "";
-        imageGallery = new ArrayList<>();
-        fileNames = new ArrayList<>();
 
         fragmentManager = getFragmentManager();
 
@@ -151,14 +147,16 @@ public class MainScreen extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
 
 
-        currentLocation = "";
 
+
+        // Menu Items
         navMenu = navigationView.getMenu();
         signin = navMenu.findItem(R.id.nav_signin);
         signout = navMenu.findItem(R.id.nav_signout);
         signup = navMenu.findItem(R.id.nav_signup);
 
 
+        // Profile Information
         LinearLayout layout = (LinearLayout) (navigationView).getHeaderView(0);
         user_image = (ImageView) layout.getChildAt(0);
         user_name = (TextView)layout.getChildAt(1);
@@ -175,10 +173,12 @@ public class MainScreen extends AppCompatActivity
             return;
         }
 
-        SearchLocation = false;
+
 
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        //currentLocation = "";
+        //SearchLocation = false;
 
         // Define a listener that responds to location updates
         locationListener = new LocationListener() {
@@ -200,9 +200,9 @@ public class MainScreen extends AppCompatActivity
 
         loadData();
 
+
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
-
 
         database = FirebaseDatabase.getInstance();
 
@@ -347,7 +347,7 @@ public class MainScreen extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         Intent intent;
-
+        
         if (id == R.id.nav_camera) {
             if(mAuth.getCurrentUser() != null) {
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
