@@ -78,10 +78,6 @@ public class MainScreen extends AppCompatActivity
 
     private String TAG = "Permission";
 
-    private boolean landscape;
-    private int w;
-
-    private boolean downloading;
     private static String files;
 
     private static FragmentManager fragmentManager;
@@ -123,17 +119,6 @@ public class MainScreen extends AppCompatActivity
     private static TextView user_email;
 
     @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-
-        // Check if the current orientation is landscape.
-        landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-
-        ConstraintLayout layout = findViewById(R.id.activity_mainscreen);
-        w = layout.getWidth();
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
@@ -150,7 +135,9 @@ public class MainScreen extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                takePicture();
+                if(mAuth.getCurrentUser() != null) {
+                    takePicture();
+                }
             }
         });
 
@@ -362,18 +349,19 @@ public class MainScreen extends AppCompatActivity
         Intent intent;
 
         if (id == R.id.nav_camera) {
-            takePicture();
+            if(mAuth.getCurrentUser() != null) {
+                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
+                takePicture();
+            }
         } else if (id == R.id.nav_gallery) {
-
-            Gallery.setLandscape(landscape, w);
-            Gallery.setFileNames(files);
-            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+            if(mAuth.getCurrentUser() != null) {
+                Gallery.setFileNames(files);
+                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+            }
         } else if (id == R.id.nav_slideshow) {
 
         } else if (id == R.id.nav_manage) {
             if(mAuth.getCurrentUser() != null){
-                //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
-
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
             }
         } else if (id == R.id.nav_signin) {
@@ -387,7 +375,6 @@ public class MainScreen extends AppCompatActivity
             intent = new Intent(MainScreen.this, LoginActivity.class);
             intent.putExtra("Signup", true);
             startActivity(intent);
-
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);

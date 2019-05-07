@@ -9,15 +9,18 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import android.support.constraint.ConstraintLayout;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -38,15 +41,16 @@ public class Gallery extends Fragment {
     private LinearLayout row;
     private static Context context;
 
-    private static boolean landscape;
+
     private int counter;
     private static ArrayList<Bitmap> imageGallery;
     private int numImages;
     private ImageView imageView;
+
+    private static boolean landscape;
     private static int w;
 
-    private ArrayList<String> fileNames;
-    private static ImageView test;
+    private static ArrayList<String> fileNames;
 
     private int index = 0;
 
@@ -54,24 +58,56 @@ public class Gallery extends Fragment {
     private StorageReference mStorageRef;
     private File image;
 
-    private static String files;
+    private static String prevous_files = "";
+    private static String files = "";
+
+    private View view;
 
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable final ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.activity_gallery, container, false);
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
 
+        view = getView();
+
+        landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+
+                w = getView().getWidth();
+
+                if(w > 0)
+                {
+                    getView().getViewTreeObserver().removeGlobalOnLayoutListener(this);
+                    setUp();
+                }
+            }
+        });
+    }
+
+    private void setUp() {
         table = (LinearLayout)view.findViewById(R.id.table);
-
-        test = view.findViewById(R.id.testView);
-
 
         Log.d("Name", files);
         String name;
 
         int i = 0;
         index = 0;
+
+        context = view.getContext();
+
+        mAuth = FirebaseAuth.getInstance();
+        mStorageRef = FirebaseStorage.getInstance().getReference();
+
+
+        Log.d("Width", "" + w);
+        Log.d("Landscape", "" + landscape);
+        if(prevous_files.compareTo(files) == 0){
+            setImages();
+            return;
+        }
+
         fileNames = new ArrayList<>();
         imageGallery = new ArrayList<>();
 
@@ -87,31 +123,30 @@ public class Gallery extends Fragment {
             }
         }
 
-        context = container.getContext();
-
-        mAuth = FirebaseAuth.getInstance();
-        mStorageRef = FirebaseStorage.getInstance().getReference();
-
         downLoadFiles();
 
-        return view;
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable final ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.activity_gallery, container, false);
     }
 
     public static void setFileNames(String fileNames) {
+        prevous_files = files;
         files = fileNames;
     }
 
-    public static void setLandscape(boolean l, int ww){
-        landscape = l;
-        w = ww;
+    public static void setUpPhone(boolean l, int width){
+//        landscape = l;
+//        w = width;
+//
+//        Log.d("Width", "" + w);
+//        Log.d("Landscape", "" + landscape);
     }
-
     private void setImages(){
         // Set up layout for the image gallery.
-
-
-        Log.d("Test????", "" + imageGallery.size());
-
 
         if(imageGallery.size() == 0){
             return;
@@ -132,8 +167,6 @@ public class Gallery extends Fragment {
 
         // Set up all rows.
         for(int i = 0; i < numImages; i++){
-
-            Log.d("sdasdasdas", "" + i);
             // Set up image view.
             imageView = new ImageView(context);
 
@@ -182,8 +215,6 @@ public class Gallery extends Fragment {
         try {
             mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + fileNames.get(index));
 
-
-            Log.d("Name", fileNames.get(index));
             image = File.createTempFile(fileNames.get(index).substring(0, fileNames.get(index).indexOf('.')), "jpg");
             mref.getFile(image)
                     .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
@@ -196,11 +227,10 @@ public class Gallery extends Fragment {
                                 e.printStackTrace();
                             }
 
-                            Log.d("Download", imageGallery.size() + "");
-
                             if(imageGallery.size() != fileNames.size()) {
                                 downLoadFiles();
                             }else{
+                                prevous_files = files;
                                 setImages();
                             }
                         }
