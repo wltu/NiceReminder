@@ -56,11 +56,14 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 
@@ -360,11 +363,7 @@ public class MainScreen extends AppCompatActivity
 
         if (id == R.id.nav_camera) {
             takePicture();
-        } else if (id == R.id.nav_gallery) { ;
-//            intent = new Intent(MainScreen.this, ImageGallery.class);
-//            intent.putExtra("fileNames", files);
-//
-//            startActivity(intent);
+        } else if (id == R.id.nav_gallery) {
 
             Gallery.setLandscape(landscape, w);
             Gallery.setFileNames(files);
@@ -419,13 +418,6 @@ public class MainScreen extends AppCompatActivity
         super.onDestroy();
     }
 
-    private Uri getImageUri(Context context, Bitmap inImage) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-        String path = MediaStore.Images.Media.insertImage(context.getContentResolver(), inImage, String.valueOf(Calendar.getInstance().getTimeInMillis()), null);
-        return Uri.parse(path);
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if(requestCode == 1 && resultCode == RESULT_OK){
@@ -438,29 +430,42 @@ public class MainScreen extends AppCompatActivity
 
             Bitmap image = (Bitmap) extras.get("data");
 
-            Uri file = getImageUri(this, image);
-            StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + name);
+            File file = new File(context.getCacheDir(), name);
 
-            if(files.isEmpty()){
-                dataref.setValue(name);
-            }else{
-                dataref.setValue(files + "," + name);
+            try {
+                OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+
+                image.compress(Bitmap.CompressFormat.JPEG, 100, os);
+                os.close();
+
+
+                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + name);
+
+                if(files.isEmpty()){
+                    dataref.setValue(name);
+                }else{
+                    dataref.setValue(files + "," + name);
+                }
+
+                storageref.putFile(Uri.fromFile(file))
+                        .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                Toast.makeText(context, "Uploaded Image!", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception exception) {
+                                // Handle unsuccessful uploads
+                                // ...
+                            }
+                        });
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-
-            storageref.putFile(file)
-                    .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                        @Override
-                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        Toast.makeText(context, "Uploaded Image!", Toast.LENGTH_SHORT).show();
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception exception) {
-                            // Handle unsuccessful uploads
-                            // ...
-                        }
-                    });
         }
 
         super.onActivityResult(requestCode, resultCode, data);
