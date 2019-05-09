@@ -2,19 +2,26 @@ package com.example.android.nicereminder;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.FragmentManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 
 import android.util.Log;
@@ -27,7 +34,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -46,20 +52,27 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Calendar;
 
-// TODO: Profile Pictures
-/*
-    Allow user to access photo local photo gallery to set as profile
-    Add sign up option with name...
- */
+import de.hdodenhof.circleimageview.CircleImageView;
 
 public class MainScreen extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
+
+
+    private String TAG = "Permission";
+
+    private Bitmap image;
+    private static String files;
 
     private static FragmentManager fragmentManager;
     private static Context context;
@@ -74,16 +87,26 @@ public class MainScreen extends AppCompatActivity
     public static final String LOCATION_ON = "location_on";
 
     private String currentLocation;
+
+    // Database Variables
     private static FirebaseAuth mAuth;
     private static FirebaseDatabase database;
-    private DatabaseReference myRef;
+    private static DatabaseReference dataref;
     private static StorageReference mStorageRef;
 
     private static File profileFile = null;
 
+    String name;
+
+
     // Account Variables
     private NavigationView navigationView;
     private Menu navMenu;
+
+    private MenuItem delete_setting;
+    private MenuItem delete_setting_button;
+
+
     private static MenuItem signin;
     private static MenuItem signup_setting;
     private static MenuItem signup;
@@ -101,14 +124,18 @@ public class MainScreen extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+
+        files = "";
+
         fragmentManager = getFragmentManager();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                if(mAuth.getCurrentUser() != null) {
+                    takePicture();
+                }
             }
         });
 
@@ -122,17 +149,18 @@ public class MainScreen extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
 
 
-        currentLocation = "";
 
 
+        // Menu Items
         navMenu = navigationView.getMenu();
         signin = navMenu.findItem(R.id.nav_signin);
         signout = navMenu.findItem(R.id.nav_signout);
         signup = navMenu.findItem(R.id.nav_signup);
 
 
+        // Profile Information
         LinearLayout layout = (LinearLayout) (navigationView).getHeaderView(0);
-        user_image = (ImageView) layout.getChildAt(0);
+        user_image = (CircleImageView) layout.getChildAt(0);
         user_name = (TextView)layout.getChildAt(1);
         user_email = (TextView)layout.getChildAt(2);
 
@@ -147,10 +175,12 @@ public class MainScreen extends AppCompatActivity
             return;
         }
 
-        SearchLocation = false;
+
 
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        //currentLocation = "";
+        //SearchLocation = false;
 
         // Define a listener that responds to location updates
         locationListener = new LocationListener() {
@@ -172,33 +202,66 @@ public class MainScreen extends AppCompatActivity
 
         loadData();
 
+
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
 
-
         database = FirebaseDatabase.getInstance();
-
-//        myRef = database.getReference("Test");
-//
-//
-//        myRef.addValueEventListener(new ValueEventListener() {
-//            @Override
-//            public void onDataChange(DataSnapshot dataSnapshot) {
-//                // This method is called once with the initial value and again
-//                // whenever data at this location is updated.
-//                String value = dataSnapshot.getValue(String.class);
-//
-//            }
-//
-//            @Override
-//            public void onCancelled(DatabaseError error) {
-//
-//            }
-//        });
 
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
+        FirebaseUser user = mAuth.getCurrentUser();
+        if(user != null && profileFile == null){
+            try {
+                StorageReference mref = mStorageRef.child("User/" + user.getEmail() +  "/profile.jpg");
+                profileFile = File.createTempFile("profile", "jpg");
 
+                mref.getFile(profileFile)
+                        .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                // Successfully downloaded data to local file
+                                // ...
+                                try {
+                                    user_image.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(profileFile)));
+                                } catch (FileNotFoundException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception exception) {
+                        user_image.setImageResource(R.mipmap.ic_launcher_round);
+                    }
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+        if(mAuth.getCurrentUser() != null){
+            String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
+            dataref = database.getReference("user").child(temp).child("gallery");
+
+            dataref.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // This method is called once with the initial value and again
+                    // whenever data at this location is updated.
+                    files = dataSnapshot.getValue(String.class);
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+
+                }
+            });
+        }
+
+
+        isReadStoragePermissionGranted();
+        isWriteStoragePermissionGranted();
     }
 
     @Override
@@ -216,6 +279,11 @@ public class MainScreen extends AppCompatActivity
         // Inflate the menu; this adds items to the action bar if it is present.
 
         getMenuInflater().inflate(R.menu.main_screen, menu);
+
+        delete_setting = menu.findItem(R.id.action_delete);
+        delete_setting_button = menu.findItem(R.id.action_delete_button);
+        delete_setting.setVisible(false);
+        delete_setting_button.setVisible(false);
 
         signup_setting = menu.findItem(R.id.action_signup);
         signin_setting = menu.findItem(R.id.action_signin);
@@ -240,6 +308,7 @@ public class MainScreen extends AppCompatActivity
     }
 
 
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -249,7 +318,55 @@ public class MainScreen extends AppCompatActivity
 
         Intent intent;
         //noinspection SimplifiableIfStatement
+
+        delete_setting.setVisible(false);
+
         switch(id) {
+            case R.id.action_delete_button:
+                delete_setting.setVisible(true);
+
+                AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+                alert.setTitle("Delete Images?");
+
+
+                alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                    }
+                });
+
+                alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        files = Gallery.DeleteSelected();
+
+
+                        dataref.setValue(files);
+
+                        delete_setting.setVisible(true);
+
+                        Gallery.setFileNames(files);
+                        fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+                    }
+                });
+
+                alert.show();
+                return true;
+            case R.id.action_delete:
+                delete_setting.setVisible(true);
+
+                if(Gallery.delete){
+                    Gallery.CancelSelect();
+                    delete_setting.setTitle(R.string.action_delete);
+                    delete_setting_button.setVisible(false);
+                    Gallery.delete = false;
+                }else{
+                    delete_setting.setTitle(R.string.action_delete_cancel);
+                    delete_setting_button.setVisible(true);
+                    Gallery.delete = true;
+                }
+
+
+                return true;
             case R.id.action_settings:
                 if(mAuth.getCurrentUser() != null){
                     navigationView.setCheckedItem(R.id.nav_manage);
@@ -286,16 +403,24 @@ public class MainScreen extends AppCompatActivity
         int id = item.getItemId();
         Intent intent;
 
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
+        delete_setting.setVisible(false);
 
+        if (id == R.id.nav_camera) {
+            if(mAuth.getCurrentUser() != null) {
+                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
+                takePicture();
+            }
+        } else if (id == R.id.nav_gallery) {
+            if(mAuth.getCurrentUser() != null) {
+                delete_setting.setVisible(true);
+
+                Gallery.setFileNames(files);
+                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+            }
         } else if (id == R.id.nav_slideshow) {
 
         } else if (id == R.id.nav_manage) {
             if(mAuth.getCurrentUser() != null){
-                //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
-
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
             }
         } else if (id == R.id.nav_signin) {
@@ -309,12 +434,19 @@ public class MainScreen extends AppCompatActivity
             intent = new Intent(MainScreen.this, LoginActivity.class);
             intent.putExtra("Signup", true);
             startActivity(intent);
-
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    private void takePicture() {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+        if(intent.resolveActivity(getPackageManager()) != null){
+            startActivityForResult(intent, 1);
+        }
     }
 
     @Override
@@ -330,6 +462,97 @@ public class MainScreen extends AppCompatActivity
         //mAuth.signOut();
 
         super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if(requestCode == 1 && resultCode == RESULT_OK){
+            takePicture();
+
+            String email = mAuth.getCurrentUser().getEmail();
+            name = Calendar.getInstance().getTimeInMillis() + ".jpg";
+
+            Bundle extras = data.getExtras();
+
+            image = (Bitmap) extras.get("data");
+
+
+            File file = new File(context.getCacheDir(), name);
+
+            try {
+                OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+
+                image.compress(Bitmap.CompressFormat.JPEG, 100, os);
+                os.close();
+
+                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + name);
+
+                storageref.putFile(Uri.fromFile(file))
+                        .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                if(files.isEmpty()){
+                                    files = name;
+                                }else{
+                                    files = files + "," + name;
+                                }
+
+                                Gallery.setFileNames(files);
+
+                                dataref.setValue(files);
+
+                                Gallery.imageGallery.add(Gallery.RotateBitmap(image, 90));
+
+                                Toast.makeText(context, "Uploaded Image!", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception exception) {
+                                // Handle unsuccessful uploads
+                                // ...
+                            }
+                        });
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else if(requestCode == 2 && resultCode == RESULT_OK){
+
+
+            Uri image = data.getData();
+
+            if(image != null){
+                try {
+                    user_image.setImageBitmap(MediaStore.Images.Media.getBitmap(this.getContentResolver(), image));
+
+                    String email = mAuth.getCurrentUser().getEmail();
+                    StorageReference storageref = mStorageRef.child("User/" + email + "/profile.jpg");
+
+                    storageref.putFile(image)
+                            .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                    Toast.makeText(context, "Changed Profile!", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception exception) {
+                                    // Handle unsuccessful uploads
+                                    // ...
+                                }
+                            });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+
+            }
+        }
+
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void requestLocation(){
@@ -367,7 +590,7 @@ public class MainScreen extends AppCompatActivity
             user_email.setText(email);
 
             String temp = email.replace('.', ' ');
-            DatabaseReference ref = database.getReference(temp);
+            DatabaseReference ref = database.getReference("user").child(temp).child("name");
 
             ref.addValueEventListener(new ValueEventListener() {
                 @Override
@@ -375,6 +598,23 @@ public class MainScreen extends AppCompatActivity
                     // This method is called once with the initial value and again
                     // whenever data at this location is updated.
                     user_name.setText(dataSnapshot.getValue(String.class));
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+
+                }
+            });
+
+            temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
+            dataref = database.getReference("user").child(temp).child("gallery");
+
+            dataref.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // This method is called once with the initial value and again
+                    // whenever data at this location is updated.
+                    files = dataSnapshot.getValue(String.class);
                 }
 
                 @Override
@@ -464,5 +704,48 @@ public class MainScreen extends AppCompatActivity
 
         UpdateAccountStatus(false);
         Toast.makeText(context, "Deleted Account!", Toast.LENGTH_SHORT).show();
+    }
+
+
+
+    // Check Permission
+    // Check Read Storage Permission
+    public  boolean isReadStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.v(TAG,"Permission is granted1");
+                return true;
+            } else {
+
+                Log.v(TAG,"Permission is revoked1");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 3);
+                return false;
+            }
+        }
+        else { //permission is automatically granted on sdk<23 upon installation
+            Log.v(TAG,"Permission is granted1");
+            return true;
+        }
+    }
+
+    // Check Write Storage Permission
+    public  boolean isWriteStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.v(TAG,"Permission is granted2");
+                return true;
+            } else {
+
+                Log.v(TAG,"Permission is revoked2");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
+                return false;
+            }
+        }
+        else { //permission is automatically granted on sdk<23 upon installation
+            Log.v(TAG,"Permission is granted2");
+            return true;
+        }
     }
 }

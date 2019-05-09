@@ -8,5 +8,4 @@
     tools:context=".MainScreen"
     tools:showIn="@layout/app_bar_main_screen"
     android:id ="@+id/activity_mainscreen">
-
 </android.support.constraint.ConstraintLayout>
