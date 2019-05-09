@@ -67,6 +67,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 
+import de.hdodenhof.circleimageview.CircleImageView;
+
 // TODO: Profile Pictures
 /*
     Allow user to access photo local photo gallery to set as profile
@@ -162,7 +164,7 @@ public class MainScreen extends AppCompatActivity
 
         // Profile Information
         LinearLayout layout = (LinearLayout) (navigationView).getHeaderView(0);
-        user_image = (ImageView) layout.getChildAt(0);
+        user_image = (CircleImageView) layout.getChildAt(0);
         user_name = (TextView)layout.getChildAt(1);
         user_email = (TextView)layout.getChildAt(2);
 
@@ -415,7 +417,7 @@ public class MainScreen extends AppCompatActivity
             takePicture();
 
             String email = mAuth.getCurrentUser().getEmail();
-            name = Calendar.getInstance().getTimeInMillis() + ".png";
+            name = Calendar.getInstance().getTimeInMillis() + ".jpg";
 
             Bundle extras = data.getExtras();
 
@@ -430,7 +432,7 @@ public class MainScreen extends AppCompatActivity
 
                 OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
 
-                image.compress(Bitmap.CompressFormat.PNG, 100, os);
+                image.compress(Bitmap.CompressFormat.JPEG, 100, os);
                 os.close();
 
                 StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + name);

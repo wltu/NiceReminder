@@ -47,6 +47,8 @@ public class Gallery extends Fragment {
     private int numImages;
     private ImageView imageView;
 
+//    private SquareImageView imageView;
+
     private static boolean landscape;
     private static int w;
 
@@ -172,6 +174,8 @@ public class Gallery extends Fragment {
 
             imageView.setLayoutParams(new ViewGroup.LayoutParams(w / numImage, w/ numImage));;
 
+            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+
             // Select Image
             imageView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -201,6 +205,7 @@ public class Gallery extends Fragment {
             for(; counter < numImage; counter++){
                 imageView = new ImageView(context);
                 imageView.setLayoutParams(new ViewGroup.LayoutParams(w / numImage, w/ numImage));
+                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 row.addView(imageView);
             }
         }
