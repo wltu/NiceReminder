@@ -76,6 +76,7 @@ import java.util.Calendar;
 public class MainScreen extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+
     private String TAG = "Permission";
 
     private static String files;
@@ -102,6 +103,8 @@ public class MainScreen extends AppCompatActivity
 
     private static File profileFile = null;
 
+    String name;
+
 
     // Account Variables
     private NavigationView navigationView;
@@ -122,6 +125,7 @@ public class MainScreen extends AppCompatActivity
         setContentView(R.layout.activity_main_screen);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
 
         files = "";
 
@@ -239,8 +243,8 @@ public class MainScreen extends AppCompatActivity
 
 
         if(mAuth.getCurrentUser() != null){
-            String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ') + ":gallery";
-            dataref = database.getReference(temp);
+            String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
+            dataref = database.getReference("user").child(temp).child("gallery");
 
             dataref.addValueEventListener(new ValueEventListener() {
                 @Override
@@ -347,10 +351,10 @@ public class MainScreen extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         Intent intent;
-        
+
         if (id == R.id.nav_camera) {
             if(mAuth.getCurrentUser() != null) {
-                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
+                //fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
                 takePicture();
             }
         } else if (id == R.id.nav_gallery) {
@@ -411,33 +415,36 @@ public class MainScreen extends AppCompatActivity
             takePicture();
 
             String email = mAuth.getCurrentUser().getEmail();
-            String name = String.valueOf(Calendar.getInstance().getTimeInMillis()) + ".jpg";
+            name = Calendar.getInstance().getTimeInMillis() + ".png";
 
             Bundle extras = data.getExtras();
 
             Bitmap image = (Bitmap) extras.get("data");
 
+
             File file = new File(context.getCacheDir(), name);
 
             try {
+
+
+
                 OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
 
-                image.compress(Bitmap.CompressFormat.JPEG, 100, os);
+                image.compress(Bitmap.CompressFormat.PNG, 100, os);
                 os.close();
 
-
                 StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + name);
-
-                if(files.isEmpty()){
-                    dataref.setValue(name);
-                }else{
-                    dataref.setValue(files + "," + name);
-                }
 
                 storageref.putFile(Uri.fromFile(file))
                         .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                             @Override
                             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                if(files.isEmpty()){
+                                    dataref.setValue(name);
+                                }else{
+                                    dataref.setValue(files + "," + name);
+                                }
+
                                 Toast.makeText(context, "Uploaded Image!", Toast.LENGTH_SHORT).show();
                             }
                         })
@@ -493,7 +500,7 @@ public class MainScreen extends AppCompatActivity
             user_email.setText(email);
 
             String temp = email.replace('.', ' ');
-            DatabaseReference ref = database.getReference(temp);
+            DatabaseReference ref = database.getReference("user").child(temp).child("name");
 
             ref.addValueEventListener(new ValueEventListener() {
                 @Override
@@ -509,8 +516,8 @@ public class MainScreen extends AppCompatActivity
                 }
             });
 
-            temp = mAuth.getCurrentUser().getEmail().replace('.', ' ') + ":gallery";
-            dataref = database.getReference(temp);
+            temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
+            dataref = database.getReference("user").child(temp).child("gallery");
 
             dataref.addValueEventListener(new ValueEventListener() {
                 @Override
