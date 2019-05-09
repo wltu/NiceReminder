@@ -30,24 +30,21 @@ import com.google.firebase.storage.StorageReference;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
-
 public class Gallery extends Fragment {
-    private HashMap<ImageView, Integer> map;
+    private static HashMap<ImageView, Integer> map;
+
+    public static boolean delete;
 
 
-    private LinearLayout table;
-    private LinearLayout row;
     private static Context context;
 
 
-    private int counter;
     public static ArrayList<Bitmap> imageGallery;
-    private int numImages;
-    private ImageView imageView;
+    public static ArrayList<Boolean> selectImage;
 
-//    private SquareImageView imageView;
 
     private static boolean landscape;
     private static int w;
@@ -56,11 +53,11 @@ public class Gallery extends Fragment {
 
     private int index = 0;
 
-    private FirebaseAuth mAuth;
+    private static FirebaseAuth mAuth;
     private StorageReference mStorageRef;
+    private static StorageReference storageref;
     private File image;
 
-    private static String prevous_files = "";
     private static String files = "";
 
     private View view;
@@ -72,6 +69,7 @@ public class Gallery extends Fragment {
 
         view = getView();
 
+        delete = false;
         landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -91,8 +89,6 @@ public class Gallery extends Fragment {
     private void setUp() {
         map = new HashMap<>();
 
-        table = (LinearLayout)view.findViewById(R.id.table);
-
 
         Log.d("Name", files);
         String name;
@@ -108,7 +104,9 @@ public class Gallery extends Fragment {
 
         Log.d("Width", "" + w);
         Log.d("Landscape", "" + landscape);
-        if(files.length() > 0 && prevous_files.compareTo(files) == 0){
+
+        if(files != null && !files.isEmpty() && imageGallery != null){
+            selectImage =new ArrayList<>(Collections.nCopies(imageGallery.size(), false));
             setImages();
             return;
         }
@@ -126,6 +124,8 @@ public class Gallery extends Fragment {
             }
         }
 
+       selectImage = new ArrayList<>(Collections.nCopies(fileNames.size(), false));
+
 
         if(fileNames.size() > 0)
             downLoadFiles();
@@ -138,12 +138,14 @@ public class Gallery extends Fragment {
     }
 
     public static void setFileNames(String fileNames) {
-        prevous_files = files;
         files = fileNames;
     }
 
     private void setImages(){
         // Set up layout for the image gallery.
+        LinearLayout table = (LinearLayout)view.findViewById(R.id.table);
+        LinearLayout row;
+
 
         if(imageGallery.size() == 0){
             return;
@@ -158,11 +160,9 @@ public class Gallery extends Fragment {
 
         // Number of image per row is 3 for portrait and 4 for landscape.
         int numImage = (3 + (landscape ? 1 : 0));
-        counter = 0;
-
-        numImages = imageGallery.size();
-
-        Log.d("Size", numImage + "");
+        int counter = 0;
+        ImageView imageView;
+        int numImages = imageGallery.size();
 
         // Set up all rows.
         for(int i = 0; i < numImages; i++){
@@ -180,9 +180,19 @@ public class Gallery extends Fragment {
             imageView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = new Intent(getActivity(), ViewImage.class);
-                    intent.putExtra("index", map.get((ImageView) v));
-                    startActivity(intent);
+                    if(delete){
+                        if(v.getForeground() == null){
+                            v.setForeground(getResources().getDrawable(R.drawable.border));
+                            selectImage.set(map.get(v), true);
+                        }else{
+                            v.setForeground(null);
+                            selectImage.set(map.get(v), false);
+                        }
+                    }else {
+                        Intent intent = new Intent(getActivity(), ViewImage.class);
+                        intent.putExtra("index", map.get(v));
+                        startActivity(intent);
+                    }
                 }
             });
 
@@ -207,7 +217,7 @@ public class Gallery extends Fragment {
             for(; counter < numImage; counter++){
                 imageView = new ImageView(context);
                 imageView.setLayoutParams(new ViewGroup.LayoutParams(w / numImage, w/ numImage));
-                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+
                 row.addView(imageView);
             }
         }
@@ -227,18 +237,10 @@ public class Gallery extends Fragment {
                         @Override
                         public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
                             index++;
-//                            try {
-                                //imageGallery.add(RotateBitmap(BitmapFactory.decodeStream(new FileInputStream(image)), 90));
-//                                imageGallery.add(BitmapFactory.decodeStream(new FileInputStream(image)));
-                                imageGallery.add(RotateBitmap(BitmapFactory.decodeFile(image.getPath()), 90));
-//                            } catch (FileNotFoundException e) {
-//                                e.printStackTrace();
-//                            }
-
+                            imageGallery.add(RotateBitmap(BitmapFactory.decodeFile(image.getPath()), 90));
                             if(imageGallery.size() != fileNames.size()) {
                                 downLoadFiles();
                             }else{
-                                prevous_files = files;
                                 setImages();
                             }
                         }
@@ -252,10 +254,44 @@ public class Gallery extends Fragment {
         }
     }
 
-    public Bitmap RotateBitmap(Bitmap source, float angle)
+    public static Bitmap RotateBitmap(Bitmap source, float angle)
     {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    }
+
+    public static String DeleteSelected(){
+
+
+        String email = mAuth.getCurrentUser().getEmail();
+        files = "";
+
+        for(int i = 0; i < fileNames.size(); i++){
+            if(i != 0){
+                files = files + ",";
+            }
+
+            if(selectImage.get(i)){
+                storageref = FirebaseStorage.getInstance().getReference().child("User/" + email + "/gallery/" + fileNames.get(i));
+                storageref.delete();
+
+
+                selectImage.remove(i);
+                imageGallery.remove(i);
+                fileNames.remove(i);
+                i--;
+            }else{
+                files = files + fileNames.get(i);
+            }
+        }
+
+        return files;
+    }
+
+    public static void CancelSelect(){
+        for (ImageView v : map.keySet()) {
+            v.setForeground(null);
+        }
     }
 }

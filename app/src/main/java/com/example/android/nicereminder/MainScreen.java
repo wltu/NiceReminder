@@ -2,8 +2,10 @@ package com.example.android.nicereminder;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.FragmentManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -19,12 +21,9 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 
-import android.text.Layout;
 import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -35,7 +34,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -57,23 +55,15 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Calendar;
 
 import de.hdodenhof.circleimageview.CircleImageView;
-
-// TODO: Profile Pictures
-/*
-    Allow user to access photo local photo gallery to set as profile
-    Add sign up option with name...
- */
 
 public class MainScreen extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -81,6 +71,7 @@ public class MainScreen extends AppCompatActivity
 
     private String TAG = "Permission";
 
+    private Bitmap image;
     private static String files;
 
     private static FragmentManager fragmentManager;
@@ -111,6 +102,11 @@ public class MainScreen extends AppCompatActivity
     // Account Variables
     private NavigationView navigationView;
     private Menu navMenu;
+
+    private MenuItem delete_setting;
+    private MenuItem delete_setting_button;
+
+
     private static MenuItem signin;
     private static MenuItem signup_setting;
     private static MenuItem signup;
@@ -284,6 +280,11 @@ public class MainScreen extends AppCompatActivity
 
         getMenuInflater().inflate(R.menu.main_screen, menu);
 
+        delete_setting = menu.findItem(R.id.action_delete);
+        delete_setting_button = menu.findItem(R.id.action_delete_button);
+        delete_setting.setVisible(false);
+        delete_setting_button.setVisible(false);
+
         signup_setting = menu.findItem(R.id.action_signup);
         signin_setting = menu.findItem(R.id.action_signin);
         signout_setting = menu.findItem(R.id.action_signout);
@@ -317,7 +318,55 @@ public class MainScreen extends AppCompatActivity
 
         Intent intent;
         //noinspection SimplifiableIfStatement
+
+        delete_setting.setVisible(false);
+
         switch(id) {
+            case R.id.action_delete_button:
+                delete_setting.setVisible(true);
+
+                AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+                alert.setTitle("Delete Images?");
+
+
+                alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                    }
+                });
+
+                alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        files = Gallery.DeleteSelected();
+
+
+                        dataref.setValue(files);
+
+                        delete_setting.setVisible(true);
+
+                        Gallery.setFileNames(files);
+                        fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+                    }
+                });
+
+                alert.show();
+                return true;
+            case R.id.action_delete:
+                delete_setting.setVisible(true);
+
+                if(Gallery.delete){
+                    Gallery.CancelSelect();
+                    delete_setting.setTitle(R.string.action_delete);
+                    delete_setting_button.setVisible(false);
+                    Gallery.delete = false;
+                }else{
+                    delete_setting.setTitle(R.string.action_delete_cancel);
+                    delete_setting_button.setVisible(true);
+                    Gallery.delete = true;
+                }
+
+
+                return true;
             case R.id.action_settings:
                 if(mAuth.getCurrentUser() != null){
                     navigationView.setCheckedItem(R.id.nav_manage);
@@ -354,13 +403,17 @@ public class MainScreen extends AppCompatActivity
         int id = item.getItemId();
         Intent intent;
 
+        delete_setting.setVisible(false);
+
         if (id == R.id.nav_camera) {
             if(mAuth.getCurrentUser() != null) {
-                //fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
+                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
                 takePicture();
             }
         } else if (id == R.id.nav_gallery) {
             if(mAuth.getCurrentUser() != null) {
+                delete_setting.setVisible(true);
+
                 Gallery.setFileNames(files);
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
             }
@@ -421,7 +474,7 @@ public class MainScreen extends AppCompatActivity
 
             Bundle extras = data.getExtras();
 
-            Bitmap image = (Bitmap) extras.get("data");
+            image = (Bitmap) extras.get("data");
 
 
             File file = new File(context.getCacheDir(), name);
@@ -439,10 +492,16 @@ public class MainScreen extends AppCompatActivity
                             @Override
                             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                                 if(files.isEmpty()){
-                                    dataref.setValue(name);
+                                    files = name;
                                 }else{
-                                    dataref.setValue(files + "," + name);
+                                    files = files + "," + name;
                                 }
+
+                                Gallery.setFileNames(files);
+
+                                dataref.setValue(files);
+
+                                Gallery.imageGallery.add(Gallery.RotateBitmap(image, 90));
 
                                 Toast.makeText(context, "Uploaded Image!", Toast.LENGTH_SHORT).show();
                             }
