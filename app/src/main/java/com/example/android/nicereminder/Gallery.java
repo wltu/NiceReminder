@@ -199,6 +199,8 @@ public class Gallery extends Fragment {
                         ViewGroup.LayoutParams.WRAP_CONTENT));
                 row.setGravity(Gravity.CENTER);
             }
+
+
         }
 
         if(counter > 0){

@@ -427,9 +427,6 @@ public class MainScreen extends AppCompatActivity
             File file = new File(context.getCacheDir(), name);
 
             try {
-
-
-
                 OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
 
                 image.compress(Bitmap.CompressFormat.JPEG, 100, os);
@@ -461,6 +458,38 @@ public class MainScreen extends AppCompatActivity
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }else if(requestCode == 2 && resultCode == RESULT_OK){
+
+
+            Uri image = data.getData();
+
+            if(image != null){
+                try {
+                    user_image.setImageBitmap(MediaStore.Images.Media.getBitmap(this.getContentResolver(), image));
+
+                    String email = mAuth.getCurrentUser().getEmail();
+                    StorageReference storageref = mStorageRef.child("User/" + email + "/profile.jpg");
+
+                    storageref.putFile(image)
+                            .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                    Toast.makeText(context, "Changed Profile!", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception exception) {
+                                    // Handle unsuccessful uploads
+                                    // ...
+                                }
+                            });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+
             }
         }
 
