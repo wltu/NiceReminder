@@ -4,9 +4,11 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.FragmentManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -72,7 +74,7 @@ public class MainScreen extends AppCompatActivity
     private String TAG = "Permission";
 
     private Bitmap image;
-    private static String files;
+    private static String files = null;
 
     private static FragmentManager fragmentManager;
     private static Context context;
@@ -117,6 +119,18 @@ public class MainScreen extends AppCompatActivity
     private static TextView user_name;
     private static TextView user_email;
 
+    private class BackgroundTask extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent != null){
+                if(intent.getAction().equals("download")){
+
+                }
+            }
+        }
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -125,8 +139,6 @@ public class MainScreen extends AppCompatActivity
         setSupportActionBar(toolbar);
 
 
-        files = "";
-
         fragmentManager = getFragmentManager();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -134,6 +146,7 @@ public class MainScreen extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 if(mAuth.getCurrentUser() != null) {
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
                     takePicture();
                 }
             }
@@ -249,6 +262,13 @@ public class MainScreen extends AppCompatActivity
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     // This method is called once with the initial value and again
                     // whenever data at this location is updated.
+                    if(files == null){
+                        Intent intent =  new Intent(context, DownloadService.class);
+                        intent.setAction("download");
+                        intent.putExtra("files", dataSnapshot.getValue(String.class));
+                        startService(intent);
+                    }
+
                     files = dataSnapshot.getValue(String.class);
                 }
 
@@ -262,6 +282,10 @@ public class MainScreen extends AppCompatActivity
 
         isReadStoragePermissionGranted();
         isWriteStoragePermissionGranted();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("download");
+        registerReceiver(new BackgroundTask(), filter);
     }
 
     @Override
@@ -344,7 +368,6 @@ public class MainScreen extends AppCompatActivity
 
                         delete_setting.setVisible(true);
 
-                        Gallery.setFileNames(files);
                         fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
                     }
                 });
@@ -413,8 +436,6 @@ public class MainScreen extends AppCompatActivity
         } else if (id == R.id.nav_gallery) {
             if(mAuth.getCurrentUser() != null) {
                 delete_setting.setVisible(true);
-
-                Gallery.setFileNames(files);
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
             }
         } else if (id == R.id.nav_slideshow) {
@@ -496,8 +517,6 @@ public class MainScreen extends AppCompatActivity
                                 }else{
                                     files = files + "," + name;
                                 }
-
-                                Gallery.setFileNames(files);
 
                                 dataref.setValue(files);
 
@@ -672,7 +691,7 @@ public class MainScreen extends AppCompatActivity
 
     public static void updateName(String name){
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference myRef = database.getReference(mAuth.getCurrentUser().getEmail().replace('.', ' '));
+        DatabaseReference myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("name");
 
         myRef.setValue(name);
 
