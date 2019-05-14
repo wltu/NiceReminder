@@ -1,6 +1,6 @@
 ## Nice Reminder
 
-Nice Reminder is an app that utlizes GPS and the cloud to remind the user the last time they visted the location. User can take picture within the app and save those pictures that corresponds to the current location. The next time the user visit is around that location, the app will remind the user and provide an image gallery of all the photos taken around the location.
+ Nice Reminder is an app that utlizes GPS and the cloud to remind the user the last time they visted the location. User can take picture within the app and save those pictures that corresponds to the current location. The next time the user visit is around that location, the app will remind the user and provide an image gallery of all the photos taken around the location.
 
 
 ### Weekly Progress:
@@ -14,6 +14,9 @@ Nice Reminder is an app that utlizes GPS and the cloud to remind the user the la
  Next step: The next thing to work on for the image gallery includes the opetion to delete images from the gallery and background tasks for downloading images from the cloud.
  
 #### Week 3 (5/12 - 5/18):
+ The main focus for this week is on the process of uploading and downloading image from the firebase storage (cloud). An IntentService was added to perform background task in another thread for uploading and downloading. Another issue that was worked on this week is the image quailty of the image saved to the cloud. The image quailty before was poor since I did not save the image on the device first before saving it on the cloud. Now that the image is saved in full quailty, the time for download and upload sigificantly increased. The tradeoff is not important to the main point of the project, so I didn't do too much to increase the performance of cloud access.
+ 
+ Next Step, locationzation features.
 #### Week 4 (5/19 - 5/25):
 #### Week 5 (5/26 - 6/1):
 #### Week 6 (6/2 - 6/8):
