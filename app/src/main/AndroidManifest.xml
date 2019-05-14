@@ -19,6 +19,8 @@
     <uses-feature android:name="android.hardware.location.gps" />
 
     <application
+        android:hardwareAccelerated="false"
+        android:largeHeap="true"
         android:allowBackup="true"
         android:icon="@mipmap/ic_nicereminder"
         android:label="@string/app_name"

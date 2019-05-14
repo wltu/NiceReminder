@@ -9,6 +9,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -27,6 +28,7 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,7 +63,7 @@ public class Gallery extends Fragment {
         super.onActivityCreated(savedInstanceState);
 
         view = getView();
-
+        files = getArguments().getString("files");
         delete = false;
         landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -87,6 +89,19 @@ public class Gallery extends Fragment {
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
 
+        int i = 0;
+        fileNames = new ArrayList<>();
+        String name;
+
+        for (int j = 1; j <= files.length(); j++) {
+            if (j == files.length() || files.charAt(j) == ',') {
+                name = files.substring(i, j);
+
+                fileNames.add(name);
+                i = j + 1;
+            }
+        }
+
 
 
         if(imageGallery.size() > 0){
@@ -103,6 +118,9 @@ public class Gallery extends Fragment {
     }
 
     private void setImages(){
+
+        Log.d("Set Image", "!!!");
+
         // Set up layout for the image gallery.
         LinearLayout table = (LinearLayout)view.findViewById(R.id.table);
         LinearLayout row;
@@ -123,13 +141,16 @@ public class Gallery extends Fragment {
         int numImage = (3 + (landscape ? 1 : 0));
         int counter = 0;
         ImageView imageView;
+
         int numImages = imageGallery.size();
+
 
         // Set up all rows.
         for(int i = 0; i < numImages; i++){
+
+
             // Set up image view.
             imageView = new ImageView(context);
-
             imageView.setImageBitmap(imageGallery.get(i));
             map.put(imageView, i);
 
@@ -186,13 +207,6 @@ public class Gallery extends Fragment {
         table.addView(row);
     }
 
-    public static Bitmap RotateBitmap(Bitmap source, float angle)
-    {
-        Matrix matrix = new Matrix();
-        matrix.postRotate(angle);
-        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
     public static String DeleteSelected(){
         String email = mAuth.getCurrentUser().getEmail();
         files = "";
@@ -201,7 +215,6 @@ public class Gallery extends Fragment {
             if(selectImage.get(i)){
                 storageref = FirebaseStorage.getInstance().getReference().child("User/" + email + "/gallery/" + fileNames.get(i));
                 storageref.delete();
-
 
                 selectImage.remove(i);
                 imageGallery.remove(i);
@@ -218,6 +231,7 @@ public class Gallery extends Fragment {
             }
         }
 
+        delete = false;
         return files;
     }
 
@@ -225,5 +239,12 @@ public class Gallery extends Fragment {
         for (ImageView v : map.keySet()) {
             v.setForeground(null);
         }
+    }
+
+    public static Bitmap RotateBitmap(Bitmap source, float angle)
+    {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
     }
 }

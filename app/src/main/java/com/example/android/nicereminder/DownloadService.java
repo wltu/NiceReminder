@@ -4,15 +4,20 @@ import android.app.IntentService;
 import android.content.Intent;
 import android.content.Context;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +41,11 @@ public class DownloadService extends IntentService {
     private File image;
 
     private int index ;
+    private String files;
+    private  String newPicFile;
+    private String mCameraFileName;
+
+    private DatabaseReference dataref;
 
     @Override
     protected void onHandleIntent(Intent intent) {
@@ -47,23 +57,72 @@ public class DownloadService extends IntentService {
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
 
-                String files = intent.getStringExtra("files");
-                String name;
-                int i = 0;
-                Gallery.fileNames = new ArrayList<>();
-                Gallery.imageGallery = new ArrayList<>();
+                files = intent.getStringExtra("files");
 
-                for(int j = 1; j <= files.length(); j++){
-                    if(j == files.length()||files.charAt(j) == ','){
-                        name = files.substring(i, j);
+                if(files == null || files.length() == 0){
+                    Intent done = new Intent();
+                    done.setAction("download");
+                    sendBroadcast(done);
+                }else {
 
-                        Gallery.fileNames.add(name);
+                    String name;
+                    int i = 0;
+                    Gallery.fileNames = new ArrayList<>();
+                    Gallery.imageGallery = new ArrayList<>();
 
-                        i = j + 1;
+                    for (int j = 1; j <= files.length(); j++) {
+                        if (j == files.length() || files.charAt(j) == ',') {
+                            name = files.substring(i, j);
+
+                            Gallery.fileNames.add(name);
+
+                            i = j + 1;
+                        }
                     }
-                }
 
-                downLoadFiles();
+                    downLoadFiles();
+                }
+            }else if(action.equals("upload")){
+                mAuth = FirebaseAuth.getInstance();
+                mStorageRef = FirebaseStorage.getInstance().getReference();
+
+                newPicFile = intent.getStringExtra("name");
+                mCameraFileName = intent.getStringExtra("image");
+                files = intent.getStringExtra("files");
+
+                Uri imageTaken = Uri.fromFile(new File(mCameraFileName));
+
+                Camera.setImage(imageTaken);
+
+                Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName), 90));
+
+                String email = mAuth.getCurrentUser().getEmail();
+
+                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + newPicFile);
+
+                dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
+                storageref.putFile(imageTaken)
+                        .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                if(files.isEmpty()){
+                                    files = newPicFile;
+                                }else{
+                                    files = files + "," + newPicFile;
+                                }
+
+                                dataref.setValue(files);
+
+                                Toast.makeText(getApplicationContext(), "Uploaded Image!", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception exception) {
+                                // Handle unsuccessful uploads
+                                // ...
+                            }
+                        });
             }
         }
     }
@@ -81,6 +140,7 @@ public class DownloadService extends IntentService {
 
             int i = Gallery.fileNames.get(index).indexOf('.');
 
+            Log.d("File", Gallery.fileNames.get(index).substring(0,i));
             image = File.createTempFile(Gallery.fileNames.get(index).substring(0,i), Gallery.fileNames.get(index).substring(i));
             mref.getFile(image)
                     .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
