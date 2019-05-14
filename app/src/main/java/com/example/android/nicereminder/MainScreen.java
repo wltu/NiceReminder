@@ -4,12 +4,13 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.FragmentManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Location;
@@ -18,6 +19,7 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -60,6 +62,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Calendar;
 
@@ -72,7 +75,11 @@ public class MainScreen extends AppCompatActivity
     private String TAG = "Permission";
 
     private Bitmap image;
-    private static String files;
+    private Uri imageTaken;
+    private String mCameraFileName;
+    private String newPicFile;
+
+    private static String files = null;
 
     private static FragmentManager fragmentManager;
     private static Context context;
@@ -96,7 +103,7 @@ public class MainScreen extends AppCompatActivity
 
     private static File profileFile = null;
 
-    String name;
+    private String name;
 
 
     // Account Variables
@@ -117,15 +124,30 @@ public class MainScreen extends AppCompatActivity
     private static TextView user_name;
     private static TextView user_email;
 
+
+
+    private BackgroundTask backgroundTask;
+
+    private class BackgroundTask extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent != null){
+                if(intent.getAction().equals("download")){
+
+                }
+            }
+        }
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main_screen);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-
-        files = "";
 
         fragmentManager = getFragmentManager();
 
@@ -134,6 +156,7 @@ public class MainScreen extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 if(mAuth.getCurrentUser() != null) {
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
                     takePicture();
                 }
             }
@@ -249,6 +272,13 @@ public class MainScreen extends AppCompatActivity
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     // This method is called once with the initial value and again
                     // whenever data at this location is updated.
+                    if(files == null){
+                        Intent intent =  new Intent(context, DownloadService.class);
+                        intent.setAction("download");
+                        intent.putExtra("files", dataSnapshot.getValue(String.class));
+                        startService(intent);
+                    }
+
                     files = dataSnapshot.getValue(String.class);
                 }
 
@@ -262,7 +292,15 @@ public class MainScreen extends AppCompatActivity
 
         isReadStoragePermissionGranted();
         isWriteStoragePermissionGranted();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("download");
+
+        backgroundTask = new BackgroundTask();
+
+        registerReceiver(backgroundTask, filter);
     }
+
 
     @Override
     public void onBackPressed() {
@@ -338,14 +376,19 @@ public class MainScreen extends AppCompatActivity
                 alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         files = Gallery.DeleteSelected();
-
-
                         dataref.setValue(files);
 
                         delete_setting.setVisible(true);
 
-                        Gallery.setFileNames(files);
-                        fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+                        Bundle bundle = new Bundle();
+                        bundle.putString("files", files);
+                        Gallery fragmet = new Gallery();
+                        fragmet.setArguments(bundle);
+
+                        fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                        delete_setting.setTitle(R.string.action_delete);
+                        delete_setting_button.setVisible(false);
                     }
                 });
 
@@ -414,8 +457,12 @@ public class MainScreen extends AppCompatActivity
             if(mAuth.getCurrentUser() != null) {
                 delete_setting.setVisible(true);
 
-                Gallery.setFileNames(files);
-                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Gallery()).commit();
+                Bundle bundle = new Bundle();
+                bundle.putString("files", files);
+                Gallery fragmet = new Gallery();
+                fragmet.setArguments(bundle);
+
+                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
             }
         } else if (id == R.id.nav_slideshow) {
 
@@ -442,11 +489,28 @@ public class MainScreen extends AppCompatActivity
     }
 
     private void takePicture() {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//
+//        if(intent.resolveActivity(getPackageManager()) != null){
+//            startActivityForResult(intent, 1);
+//        }
 
-        if(intent.resolveActivity(getPackageManager()) != null){
-            startActivityForResult(intent, 1);
-        }
+        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+        StrictMode.setVmPolicy(builder.build());
+        Intent intent = new Intent();
+        intent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
+
+
+        newPicFile = Calendar.getInstance().getTimeInMillis()+ ".jpg";
+        String outPath = "/sdcard/" + newPicFile;
+        File outFile = new File(outPath);
+
+        mCameraFileName = outFile.toString();
+        Uri outuri = Uri.fromFile(outFile);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, outuri);
+        startActivityForResult(intent, 1);
+
+        imageTaken = null;
     }
 
     @Override
@@ -461,66 +525,25 @@ public class MainScreen extends AppCompatActivity
 
         //mAuth.signOut();
 
+        unregisterReceiver(backgroundTask);
         super.onDestroy();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
         if(requestCode == 1 && resultCode == RESULT_OK){
-            takePicture();
+            Log.d("Picture", "Taken");
+            //takePicture();
+            Intent intent =  new Intent(context, DownloadService.class);
+            intent.setAction("upload");
+            intent.putExtra("files", files);
+            intent.putExtra("image", mCameraFileName);
+            intent.putExtra("name", newPicFile);
 
-            String email = mAuth.getCurrentUser().getEmail();
-            name = Calendar.getInstance().getTimeInMillis() + ".jpg";
-
-            Bundle extras = data.getExtras();
-
-            image = (Bitmap) extras.get("data");
-
-
-            File file = new File(context.getCacheDir(), name);
-
-            try {
-                OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
-
-                image.compress(Bitmap.CompressFormat.JPEG, 100, os);
-                os.close();
-
-                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + name);
-
-                storageref.putFile(Uri.fromFile(file))
-                        .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                            @Override
-                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                                if(files.isEmpty()){
-                                    files = name;
-                                }else{
-                                    files = files + "," + name;
-                                }
-
-                                Gallery.setFileNames(files);
-
-                                dataref.setValue(files);
-
-                                Gallery.imageGallery.add(Gallery.RotateBitmap(image, 90));
-
-                                Toast.makeText(context, "Uploaded Image!", Toast.LENGTH_SHORT).show();
-                            }
-                        })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception exception) {
-                                // Handle unsuccessful uploads
-                                // ...
-                            }
-                        });
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            startService(intent);
         }else if(requestCode == 2 && resultCode == RESULT_OK){
-
-
             Uri image = data.getData();
 
             if(image != null){
@@ -551,8 +574,6 @@ public class MainScreen extends AppCompatActivity
 
             }
         }
-
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void requestLocation(){
@@ -672,7 +693,7 @@ public class MainScreen extends AppCompatActivity
 
     public static void updateName(String name){
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference myRef = database.getReference(mAuth.getCurrentUser().getEmail().replace('.', ' '));
+        DatabaseReference myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("name");
 
         myRef.setValue(name);
 

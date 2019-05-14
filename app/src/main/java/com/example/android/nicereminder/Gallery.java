@@ -1,12 +1,15 @@
 package com.example.android.nicereminder;
 
 import android.app.Fragment;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -20,15 +23,12 @@ import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,33 +42,28 @@ public class Gallery extends Fragment {
     private static Context context;
 
 
-    public static ArrayList<Bitmap> imageGallery;
-    public static ArrayList<Boolean> selectImage;
+    public static ArrayList<Bitmap> imageGallery = new ArrayList<>();;
+    public static ArrayList<Boolean> selectImage = new ArrayList<>();;
+    public static ArrayList<String> fileNames = new ArrayList<>();;
 
 
     private static boolean landscape;
     private static int w;
 
-    private static ArrayList<String> fileNames;
-
-    private int index = 0;
-
     private static FirebaseAuth mAuth;
     private StorageReference mStorageRef;
     private static StorageReference storageref;
-    private File image;
 
     private static String files = "";
 
     private View view;
-
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
         view = getView();
-
+        files = getArguments().getString("files");
         delete = false;
         landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -88,47 +83,32 @@ public class Gallery extends Fragment {
 
     private void setUp() {
         map = new HashMap<>();
-
-
-        Log.d("Name", files);
-        String name;
-
-        int i = 0;
-        index = 0;
-
         context = view.getContext();
 
         mAuth = FirebaseAuth.getInstance();
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
 
-        Log.d("Width", "" + w);
-        Log.d("Landscape", "" + landscape);
-
-        if(files != null && !files.isEmpty() && imageGallery != null){
-            selectImage =new ArrayList<>(Collections.nCopies(imageGallery.size(), false));
-            setImages();
-            return;
-        }
-
+        int i = 0;
         fileNames = new ArrayList<>();
-        imageGallery = new ArrayList<>();
+        String name;
 
-        for(int j = 1; j <= files.length(); j++){
-            if(j == files.length()||files.charAt(j) == ','){
+        for (int j = 1; j <= files.length(); j++) {
+            if (j == files.length() || files.charAt(j) == ',') {
                 name = files.substring(i, j);
 
                 fileNames.add(name);
-
                 i = j + 1;
             }
         }
 
-       selectImage = new ArrayList<>(Collections.nCopies(fileNames.size(), false));
 
 
-        if(fileNames.size() > 0)
-            downLoadFiles();
+        if(imageGallery.size() > 0){
+            selectImage = new ArrayList<>(Collections.nCopies(imageGallery.size(), false));
+            setImages();
+            return;
+        }
     }
 
     @Nullable
@@ -137,11 +117,10 @@ public class Gallery extends Fragment {
         return inflater.inflate(R.layout.activity_gallery, container, false);
     }
 
-    public static void setFileNames(String fileNames) {
-        files = fileNames;
-    }
-
     private void setImages(){
+
+        Log.d("Set Image", "!!!");
+
         // Set up layout for the image gallery.
         LinearLayout table = (LinearLayout)view.findViewById(R.id.table);
         LinearLayout row;
@@ -162,13 +141,16 @@ public class Gallery extends Fragment {
         int numImage = (3 + (landscape ? 1 : 0));
         int counter = 0;
         ImageView imageView;
+
         int numImages = imageGallery.size();
+
 
         // Set up all rows.
         for(int i = 0; i < numImages; i++){
+
+
             // Set up image view.
             imageView = new ImageView(context);
-
             imageView.setImageBitmap(imageGallery.get(i));
             map.put(imageView, i);
 
@@ -225,32 +207,37 @@ public class Gallery extends Fragment {
         table.addView(row);
     }
 
-    private void downLoadFiles() {
-        StorageReference mref;
+    public static String DeleteSelected(){
+        String email = mAuth.getCurrentUser().getEmail();
+        files = "";
 
-        try {
-            mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + fileNames.get(index));
+        for(int i = 0; i < fileNames.size(); i++){
+            if(selectImage.get(i)){
+                storageref = FirebaseStorage.getInstance().getReference().child("User/" + email + "/gallery/" + fileNames.get(i));
+                storageref.delete();
 
-            image = File.createTempFile(fileNames.get(index).substring(0, fileNames.get(index).indexOf('.')), "jpg");
-            mref.getFile(image)
-                    .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-                        @Override
-                        public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                            index++;
-                            imageGallery.add(RotateBitmap(BitmapFactory.decodeFile(image.getPath()), 90));
-                            if(imageGallery.size() != fileNames.size()) {
-                                downLoadFiles();
-                            }else{
-                                setImages();
-                            }
-                        }
-                    }).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception exception) {
-                }
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
+                selectImage.remove(i);
+                imageGallery.remove(i);
+                fileNames.remove(i);
+                i--;
+            }
+        }
+
+        for(int i = 0; i < fileNames.size(); i++) {
+            files += fileNames.get(i);
+
+            if(i != fileNames.size() - 1){
+                files += ",";
+            }
+        }
+
+        delete = false;
+        return files;
+    }
+
+    public static void CancelSelect(){
+        for (ImageView v : map.keySet()) {
+            v.setForeground(null);
         }
     }
 
@@ -259,39 +246,5 @@ public class Gallery extends Fragment {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
-    public static String DeleteSelected(){
-
-
-        String email = mAuth.getCurrentUser().getEmail();
-        files = "";
-
-        for(int i = 0; i < fileNames.size(); i++){
-            if(i != 0){
-                files = files + ",";
-            }
-
-            if(selectImage.get(i)){
-                storageref = FirebaseStorage.getInstance().getReference().child("User/" + email + "/gallery/" + fileNames.get(i));
-                storageref.delete();
-
-
-                selectImage.remove(i);
-                imageGallery.remove(i);
-                fileNames.remove(i);
-                i--;
-            }else{
-                files = files + fileNames.get(i);
-            }
-        }
-
-        return files;
-    }
-
-    public static void CancelSelect(){
-        for (ImageView v : map.keySet()) {
-            v.setForeground(null);
-        }
     }
 }

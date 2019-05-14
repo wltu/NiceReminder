@@ -1,6 +1,8 @@
 package com.example.android.nicereminder;
 
 import android.content.Context;
+import android.content.res.Resources;
+import android.net.Uri;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -11,6 +13,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
+
+import java.io.File;
 
 
 public class ViewImage extends AppCompatActivity {
@@ -104,16 +108,15 @@ public class ViewImage extends AppCompatActivity {
             if(--index < 0){
                 index = 0;
             }
+
             image.setImageBitmap(Gallery.imageGallery.get(index));
         }
 
         public void onSwipeLeft() {
             if(++index >= size){
-                index = size;
+                index = size - 1;
             }
-
             image.setImageBitmap(Gallery.imageGallery.get(index));
-
         }
 
         public void onSwipeTop() {
