@@ -13,20 +13,11 @@ import android.widget.ImageView;
 
 
 public class Camera extends Fragment {
-    private static ImageView cameraView;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable final ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.camera, container, false);
 
-        cameraView = v.findViewById(R.id.cameraView);
-
         return v;
-    }
-
-    public static void setImage(Uri image){
-        cameraView.setImageURI(image);
-        cameraView.setRotation(90);
     }
 }

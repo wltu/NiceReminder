@@ -92,13 +92,15 @@ public class DownloadService extends IntentService {
 
                 Uri imageTaken = Uri.fromFile(new File(mCameraFileName));
 
-                Camera.setImage(imageTaken);
 
                 Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName), 90));
 
                 String email = mAuth.getCurrentUser().getEmail();
 
                 StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + newPicFile);
+
+                Log.d("Full Name", mCameraFileName);
+                Log.d("Name",newPicFile);
 
                 dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
                 storageref.putFile(imageTaken)
@@ -129,6 +131,19 @@ public class DownloadService extends IntentService {
 
 
     private void downLoadFiles() {
+        File file = new File("/sdcard/" + Gallery.fileNames.get(index));
+        if(file.exists()){
+            index++;
+            Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90));
+            Log.d("File", "Exit");
+
+            if(Gallery.imageGallery.size() != Gallery.fileNames.size()) {
+                downLoadFiles();
+            }
+
+            return;
+        }
+
         StorageReference mref;
 
         try {
