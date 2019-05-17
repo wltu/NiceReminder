@@ -236,6 +236,9 @@ public class Gallery extends Fragment {
     }
 
     public static void CancelSelect(){
+        if(map == null)
+            return;
+
         for (ImageView v : map.keySet()) {
             v.setForeground(null);
         }

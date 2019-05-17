@@ -398,10 +398,7 @@ public class MainScreen extends AppCompatActivity
                 delete_setting.setVisible(true);
 
                 if(Gallery.delete){
-                    Gallery.CancelSelect();
-                    delete_setting.setTitle(R.string.action_delete);
-                    delete_setting_button.setVisible(false);
-                    Gallery.delete = false;
+                    setDeleteOption();
                 }else{
                     delete_setting.setTitle(R.string.action_delete_cancel);
                     delete_setting_button.setVisible(true);
@@ -411,6 +408,8 @@ public class MainScreen extends AppCompatActivity
 
                 return true;
             case R.id.action_settings:
+                setDeleteOption();
+
                 if(mAuth.getCurrentUser() != null){
                     navigationView.setCheckedItem(R.id.nav_manage);
                     //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
@@ -419,6 +418,7 @@ public class MainScreen extends AppCompatActivity
 
                 return true;
             case R.id.action_signout:
+                setDeleteOption();
                 SignOut();
 
                 return true;
@@ -439,6 +439,13 @@ public class MainScreen extends AppCompatActivity
         }
     }
 
+    private void setDeleteOption() {
+        Gallery.CancelSelect();
+        delete_setting.setTitle(R.string.action_delete);
+        delete_setting_button.setVisible(false);
+        Gallery.delete = false;
+    }
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
@@ -449,6 +456,7 @@ public class MainScreen extends AppCompatActivity
         delete_setting.setVisible(false);
 
         if (id == R.id.nav_camera) {
+            setDeleteOption();
             if(mAuth.getCurrentUser() != null) {
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
                 takePicture();
@@ -467,6 +475,7 @@ public class MainScreen extends AppCompatActivity
         } else if (id == R.id.nav_slideshow) {
 
         } else if (id == R.id.nav_manage) {
+            setDeleteOption();
             if(mAuth.getCurrentUser() != null){
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
             }
@@ -476,6 +485,7 @@ public class MainScreen extends AppCompatActivity
             startActivity(intent);
 
         } else if (id == R.id.nav_signout) {
+            setDeleteOption();
             SignOut();
         } else if(id == R.id.nav_signup){
             intent = new Intent(MainScreen.this, LoginActivity.class);
@@ -719,6 +729,12 @@ public class MainScreen extends AppCompatActivity
     }
 
     public static void deleteAccount(){
+        dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '));
+        dataref.removeValue();
+
+        StorageReference storageref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail());
+        storageref.delete();
+
         mAuth.getCurrentUser().delete();
         mAuth.signOut();
         profileFile = null;
