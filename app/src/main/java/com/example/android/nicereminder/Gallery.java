@@ -93,7 +93,7 @@ public class Gallery extends Fragment {
         fileNames = new ArrayList<>();
         String name;
 
-        for (int j = 1; j <= files.length(); j++) {
+         for (int j = 1; j <= files.length(); j++) {
             if (j == files.length() || files.charAt(j) == ',') {
                 name = files.substring(i, j);
 
