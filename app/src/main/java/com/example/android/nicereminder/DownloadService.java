@@ -44,6 +44,8 @@ public class DownloadService extends IntentService {
     private String files;
     private  String newPicFile;
     private String mCameraFileName;
+    private String longitude;
+    private String latitude;
 
     private DatabaseReference dataref;
 
@@ -58,6 +60,8 @@ public class DownloadService extends IntentService {
                 mStorageRef = FirebaseStorage.getInstance().getReference();
 
                 files = intent.getStringExtra("files");
+                longitude = intent.getStringExtra("longitude");
+                latitude = intent.getStringExtra("latitude");
 
                 if(files == null || files.length() == 0){
                     Intent done = new Intent();
@@ -89,6 +93,8 @@ public class DownloadService extends IntentService {
                 newPicFile = intent.getStringExtra("name");
                 mCameraFileName = intent.getStringExtra("image");
                 files = intent.getStringExtra("files");
+                longitude = intent.getStringExtra("longitude");
+                latitude = intent.getStringExtra("latitude");
 
                 Uri imageTaken = Uri.fromFile(new File(mCameraFileName));
 
@@ -97,12 +103,12 @@ public class DownloadService extends IntentService {
 
                 String email = mAuth.getCurrentUser().getEmail();
 
-                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + newPicFile);
+                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + latitude + "/" + longitude + "/" + newPicFile);
 
                 Log.d("Full Name", mCameraFileName);
                 Log.d("Name",newPicFile);
 
-                dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
+                dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery").child(latitude).child(longitude);
                 storageref.putFile(imageTaken)
                         .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                             @Override
@@ -147,7 +153,7 @@ public class DownloadService extends IntentService {
         StorageReference mref;
 
         try {
-            mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + Gallery.fileNames.get(index));
+            mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + latitude + "/" + longitude + "/" + Gallery.fileNames.get(index));
 
             Log.d("Size", Gallery.fileNames.size() + "");
             Log.d("Size?", Gallery.imageGallery.size() + "");

@@ -105,8 +105,8 @@ public class MainScreen extends AppCompatActivity
      */
 
     private String currentLocation;
-    private double latitude = -1;
-    private double longitude  = -1;
+    private static double latitude = -1;
+    private static double longitude  = -1;
     private TextView locationTest;
 
     // Database Variables
@@ -246,7 +246,7 @@ public class MainScreen extends AppCompatActivity
                     latitude = (a - Math.abs(a % 2)) / 10000.0;
                     longitude = (b - Math.abs(b % 2)) / 10000.0;
                 }
-                
+
                 locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
             }
 
@@ -305,22 +305,28 @@ public class MainScreen extends AppCompatActivity
 
 
         if(mAuth.getCurrentUser() != null){
+            Log.d("latitude", "" + latitude);
+            Log.d("longitude", "" + longitude);
             String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
-            dataref = database.getReference("user").child(temp).child("gallery");
+            dataref = database.getReference("user").child(temp).child("gallery").child(("" + latitude).replace('.', ' ')).child(("" + longitude).replace('.', ' '));
 
             dataref.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    // This method is called once with the initial value and again
-                    // whenever data at this location is updated.
-                    if(files == null){
-                        Intent intent =  new Intent(context, DownloadService.class);
-                        intent.setAction("download");
-                        intent.putExtra("files", dataSnapshot.getValue(String.class));
-                        startService(intent);
-                    }
+                    if(dataSnapshot.getValue() == null){
+                        dataref.setValue("");
+                    }else{
+                        // This method is called once with the initial value and again
+                        // whenever data at this location is updated.
+                        if(files == null){
+                            Intent intent =  new Intent(context, DownloadService.class);
+                            intent.setAction("download");
+                            intent.putExtra("files", dataSnapshot.getValue(String.class));
+                            startService(intent);
+                        }
 
-                    files = dataSnapshot.getValue(String.class);
+                        files = dataSnapshot.getValue(String.class);
+                    }
                 }
 
                 @Override
@@ -634,6 +640,8 @@ public class MainScreen extends AppCompatActivity
             intent.putExtra("files", files);
             intent.putExtra("image", mCameraFileName);
             intent.putExtra("name", newPicFile);
+            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
             startService(intent);
         }else if(requestCode == 2 && resultCode == RESULT_OK){
@@ -718,14 +726,18 @@ public class MainScreen extends AppCompatActivity
             });
 
             temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
-            dataref = database.getReference("user").child(temp).child("gallery");
+            dataref = database.getReference("user").child(temp).child("gallery").child(("" + latitude).replace('.', ' ')).child(("" + longitude).replace('.', ' '));
 
             dataref.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    // This method is called once with the initial value and again
-                    // whenever data at this location is updated.
-                    files = dataSnapshot.getValue(String.class);
+                    if(dataSnapshot.getValue() == null){
+                        dataref.setValue("");
+                    }else{
+                        // This method is called once with the initial value and again
+                        // whenever data at this location is updated.
+                        files = dataSnapshot.getValue(String.class);
+                    }
                 }
 
                 @Override
@@ -733,6 +745,9 @@ public class MainScreen extends AppCompatActivity
 
                 }
             });
+
+
+
 
 
             if(profileFile == null){
