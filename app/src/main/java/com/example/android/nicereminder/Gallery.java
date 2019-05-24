@@ -70,12 +70,13 @@ public class Gallery extends Fragment {
             @Override
             public void onGlobalLayout() {
 
-                w = getView().getWidth();
+                if(getView() != null) {
+                    w = getView().getWidth();
 
-                if(w > 0)
-                {
-                    getView().getViewTreeObserver().removeGlobalOnLayoutListener(this);
-                    setUp();
+                    if (w > 0) {
+                        getView().getViewTreeObserver().removeGlobalOnLayoutListener(this);
+                        setUp();
+                    }
                 }
             }
         });
@@ -92,6 +93,7 @@ public class Gallery extends Fragment {
         int i = 0;
         fileNames = new ArrayList<>();
         String name;
+
 
          for (int j = 1; j <= files.length(); j++) {
             if (j == files.length() || files.charAt(j) == ',') {

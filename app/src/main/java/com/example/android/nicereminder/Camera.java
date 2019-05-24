@@ -4,7 +4,10 @@ import android.app.Fragment;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
@@ -38,8 +41,7 @@ public class Camera extends Fragment {
                 String Description = "Very nice channel";
 
 
-
-                NotificationManager notificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+                NotificationManager notificationManager = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
 
                     int importance = NotificationManager.IMPORTANCE_HIGH;
@@ -58,13 +60,21 @@ public class Camera extends Fragment {
 
                 }
 
+
+                Intent intent =  new Intent(getContext(), DownloadService.class);
+                intent.setAction("download");
+
+
+                PendingIntent pendingIntent = PendingIntent.getService(getContext(), 0, intent, 0);
+
+
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(getContext())
                         .setSmallIcon(R.drawable.nicereminder)
-                        .setContentTitle("My notification")
-                        .setContentText("Hello World!")
+                        .setContentTitle("Location Gallery")
+                        .setContentText("You have been here before! CLick here to view the gallery from this location")
                         .setDefaults(Notification.DEFAULT_ALL)
-                        .setPriority(Notification.PRIORITY_HIGH);
-
+                        .setPriority(Notification.PRIORITY_HIGH)
+                        .setContentIntent(pendingIntent);
 
 
                 if (notificationManager != null) {
