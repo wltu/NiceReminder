@@ -12,8 +12,11 @@ import android.widget.Toast;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -44,6 +47,8 @@ public class DownloadService extends IntentService {
     private String files;
     private  String newPicFile;
     private String mCameraFileName;
+    private String longitude;
+    private String latitude;
 
     private DatabaseReference dataref;
 
@@ -57,31 +62,88 @@ public class DownloadService extends IntentService {
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
 
-                files = intent.getStringExtra("files");
+                //files = intent.getStringExtra("files");
 
-                if(files == null || files.length() == 0){
-                    Intent done = new Intent();
-                    done.setAction("download");
-                    sendBroadcast(done);
-                }else {
+                Log.e("WTF0", MainScreen.getLatitude());
+                Log.e("WTF1", MainScreen.getLongitude());
 
-                    String name;
-                    int i = 0;
-                    Gallery.fileNames = new ArrayList<>();
-                    Gallery.imageGallery = new ArrayList<>();
+                latitude = MainScreen.getLatitude();
+                longitude = MainScreen.getLongitude();
 
-                    for (int j = 1; j <= files.length(); j++) {
-                        if (j == files.length() || files.charAt(j) == ',') {
-                            name = files.substring(i, j);
+                dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail()
+                                                        .replace('.', ' '))
+                                                        .child("gallery")
+                                                        .child(latitude)
+                                                        .child(longitude);
 
-                            Gallery.fileNames.add(name);
+                dataref.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        if(dataSnapshot.getValue() == null){
+                            dataref.setValue("");
 
-                            i = j + 1;
+                            Intent done = new Intent();
+                            done.setAction("download");
+                            sendBroadcast(done);
+                        }else{
+                            // This method is called once with the initial value and again
+                            // whenever data at this location is updated.
+
+                            files = dataSnapshot.getValue(String.class);
+
+                            Log.e("HTF", files);
+                            String name;
+                            int i = 0;
+                            Gallery.fileNames = new ArrayList<>();
+                            Gallery.imageGallery = new ArrayList<>();
+
+                            for (int j = 1; j <= files.length(); j++) {
+                                if (j == files.length() || files.charAt(j) == ',') {
+                                    name = files.substring(i, j);
+
+                                    Gallery.fileNames.add(name);
+
+                                    Log.d("Set Names", name);
+                                    i = j + 1;
+                                }
+                            }
+
+                            if(Gallery.fileNames.size() > 0)
+                                downLoadFiles();
                         }
                     }
 
-                    downLoadFiles();
-                }
+                    @Override
+                    public void onCancelled(DatabaseError error) {
+
+                    }
+                });
+
+
+//                if(files == null || files.length() == 0){
+//                    Intent done = new Intent();
+//                    done.setAction("download");
+//                    sendBroadcast(done);
+//                }else {
+//
+//                    String name;
+//                    int i = 0;
+//                    Gallery.fileNames = new ArrayList<>();
+//                    Gallery.imageGallery = new ArrayList<>();
+//
+//                    for (int j = 1; j <= files.length(); j++) {
+//                        if (j == files.length() || files.charAt(j) == ',') {
+//                            name = files.substring(i, j);
+//
+//                            Gallery.fileNames.add(name);
+//
+//                            Log.d("Set Names", name);
+//                            i = j + 1;
+//                        }
+//                    }
+//
+//                    downLoadFiles();
+//                }
             }else if(action.equals("upload")){
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
@@ -89,6 +151,8 @@ public class DownloadService extends IntentService {
                 newPicFile = intent.getStringExtra("name");
                 mCameraFileName = intent.getStringExtra("image");
                 files = intent.getStringExtra("files");
+                longitude = intent.getStringExtra("longitude");
+                latitude = intent.getStringExtra("latitude");
 
                 Uri imageTaken = Uri.fromFile(new File(mCameraFileName));
 
@@ -97,12 +161,12 @@ public class DownloadService extends IntentService {
 
                 String email = mAuth.getCurrentUser().getEmail();
 
-                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + newPicFile);
+                StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + latitude + "/" + longitude + "/" + newPicFile);
 
                 Log.d("Full Name", mCameraFileName);
                 Log.d("Name",newPicFile);
 
-                dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
+                dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery").child(latitude).child(longitude);
                 storageref.putFile(imageTaken)
                         .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                             @Override
@@ -141,13 +205,18 @@ public class DownloadService extends IntentService {
                 downLoadFiles();
             }
 
+            // Finish downloading all images
+            Intent done = new Intent();
+            done.setAction("download");
+            sendBroadcast(done);
+
             return;
         }
 
         StorageReference mref;
 
         try {
-            mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + Gallery.fileNames.get(index));
+            mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + latitude + "/" + longitude + "/" + Gallery.fileNames.get(index));
 
             Log.d("Size", Gallery.fileNames.size() + "");
             Log.d("Size?", Gallery.imageGallery.size() + "");
@@ -166,6 +235,7 @@ public class DownloadService extends IntentService {
                             if(Gallery.imageGallery.size() != Gallery.fileNames.size()) {
                                 downLoadFiles();
                             }else{
+                                // Finish downloading all images
                                 Intent done = new Intent();
                                 done.setAction("download");
                                 sendBroadcast(done);

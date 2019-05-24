@@ -4,6 +4,10 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.FragmentManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,6 +17,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -26,6 +31,7 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -86,14 +92,23 @@ public class MainScreen extends AppCompatActivity
     private Activity activity = this;
     private LocationManager locationManager;
     private LocationListener locationListener;
-    private boolean SearchLocation;
+    private boolean newLocation = false;
 
     // Saved Data Information.
     public static final String SHARDED_PREFS = "sharedPref";
-    public static final String LOCATION = "location";
-    public static final String LOCATION_ON = "location_on";
+    public static final String LATITUDE = "latitude";
+    public static final String LONGITUDE = "longitude";
+    public static final double FAR_DISTANCE = 0.0003;  // Change Margin...
+    public static final double NEAR_DISTANCE = 0.0001;  // Change Margin...
+    /*
+        Each grid is 0.0002 by 0.0002 degree... Within the grid there is 0.0001 margin on each side before changing grid.
+        Each grid is defined by its bottom left corner.
+     */
 
     private String currentLocation;
+    private static double latitude = -1;
+    private static double longitude  = -1;
+    private TextView locationTest;
 
     // Database Variables
     private static FirebaseAuth mAuth;
@@ -125,6 +140,7 @@ public class MainScreen extends AppCompatActivity
     private static TextView user_email;
 
 
+    private int id;
 
     private BackgroundTask backgroundTask;
 
@@ -133,6 +149,21 @@ public class MainScreen extends AppCompatActivity
         public void onReceive(Context context, Intent intent) {
             if(intent != null){
                 if(intent.getAction().equals("download")){
+                    if(mAuth.getCurrentUser() != null) {
+                        try {
+                            delete_setting.setVisible(true);
+
+                            Bundle bundle = new Bundle();
+                            bundle.putString("files", files);
+                            Gallery fragmet = new Gallery();
+                            fragmet.setArguments(bundle);
+                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                        }catch(IllegalStateException e){
+                            delete_setting.setVisible(false);
+
+                            Log.e("Error", "ok");
+                        }
+                    }
 
                 }
             }
@@ -144,10 +175,13 @@ public class MainScreen extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        id = 0;
+
         setContentView(R.layout.activity_main_screen);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        locationTest = findViewById(R.id.location);
 
         fragmentManager = getFragmentManager();
 
@@ -202,13 +236,59 @@ public class MainScreen extends AppCompatActivity
 
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        //currentLocation = "";
-        //SearchLocation = false;
+
 
         // Define a listener that responds to location updates
         locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
-                currentLocation = location.getLatitude() + " : " + location.getLongitude();
+                double lat = location.getLatitude();
+                double lon = location.getLongitude();
+                currentLocation = lat + " : " + lon;
+//                locationTest.setText(currentLocation);
+
+
+                if((latitude != -1 && longitude != -1)){
+                    if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
+
+                        int a = (int)(lat * 10000);
+                        int b = (int)(lon * 10000);
+                        latitude = (a - Math.abs(a % 2)) / 10000.0;
+                        longitude = (b - Math.abs(b % 2)) / 10000.0;
+
+                        newLocation = true;
+
+                        dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
+                                            .child("gallery").child(("" + latitude).replace('.', ' '))
+                                            .child(("" + longitude).replace('.', ' '));
+                        dataref.addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                if(dataSnapshot.getValue() == null){
+                                    dataref.setValue("");
+                                }else{
+                                    files = dataSnapshot.getValue(String.class);
+
+                                    if(newLocation && files.length() > 0)
+                                        sendNotification();
+
+                                    newLocation = false;
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                            }
+                        });
+                    }
+                }else if(latitude == -1 && longitude == -1){
+                    int a = (int)(lat * 10000);
+                    int b = (int)(lon * 10000);
+                    latitude = (a - Math.abs(a % 2)) / 10000.0;
+                    longitude = (b - Math.abs(b % 2)) / 10000.0;
+                }
+
+                locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -223,8 +303,10 @@ public class MainScreen extends AppCompatActivity
 
 
 
+
         loadData();
 
+        requestLocation();
 
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
@@ -264,22 +346,30 @@ public class MainScreen extends AppCompatActivity
 
 
         if(mAuth.getCurrentUser() != null){
+            Log.d("latitude", "" + latitude);
+            Log.d("longitude", "" + longitude);
             String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
-            dataref = database.getReference("user").child(temp).child("gallery");
+            dataref = database.getReference("user").child(temp).child("gallery").child(("" + latitude).replace('.', ' ')).child(("" + longitude).replace('.', ' '));
 
             dataref.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    // This method is called once with the initial value and again
-                    // whenever data at this location is updated.
-                    if(files == null){
-                        Intent intent =  new Intent(context, DownloadService.class);
-                        intent.setAction("download");
-                        intent.putExtra("files", dataSnapshot.getValue(String.class));
-                        startService(intent);
-                    }
+                    if(dataSnapshot.getValue() == null){
+                        dataref.setValue("");
+                    }else{
+                        // This method is called once with the initial value and again
+                        // whenever data at this location is updated.
+                        if(files == null){
+                            Intent intent =  new Intent(context, DownloadService.class);
+                            intent.setAction("download");
+                            intent.putExtra("files", dataSnapshot.getValue(String.class));
+                            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+                            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
+                            startService(intent);
+                        }
 
-                    files = dataSnapshot.getValue(String.class);
+                        files = dataSnapshot.getValue(String.class);
+                    }
                 }
 
                 @Override
@@ -299,6 +389,53 @@ public class MainScreen extends AppCompatActivity
         backgroundTask = new BackgroundTask();
 
         registerReceiver(backgroundTask, filter);
+    }
+
+    private void sendNotification() {
+        String CHANNEL_ID = "CHANNEL";
+        CharSequence name = "NICE CHANNEL";
+        String Description = "Very nice channel";
+
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+            mChannel.setDescription(Description);
+            mChannel.enableLights(true);
+            mChannel.setLightColor(Color.RED);
+            mChannel.enableVibration(true);
+            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mChannel.setShowBadge(true);
+
+            if (notificationManager != null) {
+
+                notificationManager.createNotificationChannel(mChannel);
+            }
+
+        }
+
+
+        Intent intent =  new Intent(context, DownloadService.class);
+        intent.setAction("download");
+
+
+        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
+
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.nicereminder)
+                .setContentTitle("Location Gallery")
+                .setContentText("You have been here before! CLick here to view the gallery from this location")
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setPriority(Notification.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent);
+
+
+        if (notificationManager != null) {
+            notificationManager.notify(id++, builder.build());
+        }
     }
 
 
@@ -398,10 +535,7 @@ public class MainScreen extends AppCompatActivity
                 delete_setting.setVisible(true);
 
                 if(Gallery.delete){
-                    Gallery.CancelSelect();
-                    delete_setting.setTitle(R.string.action_delete);
-                    delete_setting_button.setVisible(false);
-                    Gallery.delete = false;
+                    setDeleteOption();
                 }else{
                     delete_setting.setTitle(R.string.action_delete_cancel);
                     delete_setting_button.setVisible(true);
@@ -411,6 +545,8 @@ public class MainScreen extends AppCompatActivity
 
                 return true;
             case R.id.action_settings:
+                setDeleteOption();
+
                 if(mAuth.getCurrentUser() != null){
                     navigationView.setCheckedItem(R.id.nav_manage);
                     //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
@@ -419,6 +555,7 @@ public class MainScreen extends AppCompatActivity
 
                 return true;
             case R.id.action_signout:
+                setDeleteOption();
                 SignOut();
 
                 return true;
@@ -439,6 +576,13 @@ public class MainScreen extends AppCompatActivity
         }
     }
 
+    private void setDeleteOption() {
+        Gallery.CancelSelect();
+        delete_setting.setTitle(R.string.action_delete);
+        delete_setting_button.setVisible(false);
+        Gallery.delete = false;
+    }
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
@@ -449,6 +593,7 @@ public class MainScreen extends AppCompatActivity
         delete_setting.setVisible(false);
 
         if (id == R.id.nav_camera) {
+            setDeleteOption();
             if(mAuth.getCurrentUser() != null) {
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
                 takePicture();
@@ -467,6 +612,7 @@ public class MainScreen extends AppCompatActivity
         } else if (id == R.id.nav_slideshow) {
 
         } else if (id == R.id.nav_manage) {
+            setDeleteOption();
             if(mAuth.getCurrentUser() != null){
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
             }
@@ -476,6 +622,7 @@ public class MainScreen extends AppCompatActivity
             startActivity(intent);
 
         } else if (id == R.id.nav_signout) {
+            setDeleteOption();
             SignOut();
         } else if(id == R.id.nav_signup){
             intent = new Intent(MainScreen.this, LoginActivity.class);
@@ -515,13 +662,15 @@ public class MainScreen extends AppCompatActivity
 
     @Override
     protected void onDestroy() {
-//        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-//        SharedPreferences.Editor editor = sharedPreferences.edit();
-//
-//        editor.putString(LOCATION, text.getText().toString());
-//        editor.putBoolean(LOCATION_ON, SearchLocation);
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
 
-//        editor.commit();
+        Log.d("Store", "" + latitude);
+        Log.d("Store", "" + longitude);
+        editor.putString(LATITUDE, "" + latitude);
+        editor.putString(LONGITUDE, "" + longitude);
+
+        editor.commit();
 
         //mAuth.signOut();
 
@@ -541,6 +690,8 @@ public class MainScreen extends AppCompatActivity
             intent.putExtra("files", files);
             intent.putExtra("image", mCameraFileName);
             intent.putExtra("name", newPicFile);
+            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
             startService(intent);
         }else if(requestCode == 2 && resultCode == RESULT_OK){
@@ -587,15 +738,12 @@ public class MainScreen extends AppCompatActivity
     }
 
     private void loadData(){
-//        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-//
-//        SearchLocation = sharedPreferences.getBoolean(LOCATION_ON, false);
-//
-//        if(SearchLocation){
-//            requestLocation();
-//        }
-//
-//        text.setText(sharedPreferences.getString(LOCATION, "Hello World!"));
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+
+        latitude = Double.parseDouble(sharedPreferences.getString(LATITUDE, "-1"));
+        longitude = Double.parseDouble(sharedPreferences.getString(LONGITUDE, "-1"));
+
+        locationTest.setText(sharedPreferences.getString(LATITUDE, "-1") + ", " + sharedPreferences.getString(LONGITUDE, "-1"));
     }
 
     public static void UpdateAccountStatus(boolean signined){
@@ -628,14 +776,18 @@ public class MainScreen extends AppCompatActivity
             });
 
             temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
-            dataref = database.getReference("user").child(temp).child("gallery");
+            dataref = database.getReference("user").child(temp).child("gallery").child(("" + latitude).replace('.', ' ')).child(("" + longitude).replace('.', ' '));
 
             dataref.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    // This method is called once with the initial value and again
-                    // whenever data at this location is updated.
-                    files = dataSnapshot.getValue(String.class);
+                    if(dataSnapshot.getValue() == null){
+                        dataref.setValue("");
+                    }else{
+                        // This method is called once with the initial value and again
+                        // whenever data at this location is updated.
+                        files = dataSnapshot.getValue(String.class);
+                    }
                 }
 
                 @Override
@@ -719,6 +871,12 @@ public class MainScreen extends AppCompatActivity
     }
 
     public static void deleteAccount(){
+        dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '));
+        dataref.removeValue();
+
+        StorageReference storageref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail());
+        storageref.delete();
+
         mAuth.getCurrentUser().delete();
         mAuth.signOut();
         profileFile = null;
@@ -768,5 +926,13 @@ public class MainScreen extends AppCompatActivity
             Log.v(TAG,"Permission is granted2");
             return true;
         }
+    }
+
+    public static String getLatitude(){
+        return ("" + latitude).replace('.', ' ');
+    }
+
+    public static String getLongitude(){
+        return ("" + longitude).replace('.', ' ');
     }
 }

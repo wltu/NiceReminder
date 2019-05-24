@@ -17,7 +17,11 @@
  The main focus for this week is on the process of uploading and downloading image from the firebase storage (cloud). An IntentService was added to perform background task in another thread for uploading and downloading. Another issue that was worked on this week is the image quailty of the image saved to the cloud. The image quailty before was poor since I did not save the image on the device first before saving it on the cloud. Now that the image is saved in full quailty, the time for download and upload sigificantly increased. The tradeoff is not important to the main point of the project, so I didn't do too much to increase the performance of cloud access. The only thing that was done is to remove the needs to download the image if the device still have the image in its local image gallery. In that case, the image data is read from the device instead of downloading from the cloud.
  
  Next Step, locationzation features.
+ 
 #### Week 4 (5/19 - 5/25):
+ For this week, the main work is done on the GPS location based notification for the application. The notification is used to remind the user of the image gallery that they have taken at around the current location. The location is approximated with a square grid using latitude and longitude as the coordinates. Within each location grid, it is designed to have some margin on each side to prevent frequent change of grids. Each grid is map to a location image gallery for the user and can only be accessed by the user when they are in that location. The notification pops up whenver the user enter another location that have an existing image gallery, As the user click on the notificaiton, the images is loaded into the device and display to the user. As of now, the notification only show up when the user is using the app directly. 
+ 
+ Next step, allow the application to run in the backgroun. Either the GPS/notification part is always running even when the application is closed or just having the appliction be able to run when it is in the background. Other work, reorganize code base for cleanness and some testing for bugs.
+ 
 #### Week 5 (5/26 - 6/1):
-#### Week 6 (6/2 - 6/8):
-#### Final Week:
+#### Project Demo (6/5):

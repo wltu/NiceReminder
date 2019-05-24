@@ -3,6 +3,7 @@ package com.example.android.nicereminder;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -37,8 +38,11 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +62,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private FirebaseAuth.AuthStateListener mAuthListener;
     private FirebaseAuth mAuth;
+
+    private String files;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -212,9 +218,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         if (task.isSuccessful()) {
                             FirebaseDatabase database = FirebaseDatabase.getInstance();
                             DatabaseReference myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("name");
-
                             myRef.setValue(mNameView.getText().toString());
 
+//                            myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
+//                            myRef.setValue("");
+//
                             MainScreen.UpdateAccountStatus(true);
                         } else {
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
@@ -289,6 +297,31 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                         Toast.LENGTH_SHORT).show();
                                 showProgress(false);
                             }else{
+                                String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
+
+                                DatabaseReference dataref = FirebaseDatabase.getInstance().getReference("user").child(temp).child("gallery");
+
+                                files = null;
+                                dataref.addValueEventListener(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(DataSnapshot dataSnapshot) {
+                                        // This method is called once with the initial value and again
+                                        // whenever data at this location is updated.
+                                        if(files == null){
+                                            Intent intent =  new Intent(getApplicationContext(), DownloadService.class);
+                                            intent.setAction("download");
+                                            intent.putExtra("files", dataSnapshot.getValue(String.class));
+                                            startService(intent);
+                                        }
+
+                                        files = dataSnapshot.getValue(String.class);
+                                    }
+
+                                    @Override
+                                    public void onCancelled(DatabaseError error) {
+
+                                    }
+                                });
                                 MainScreen.UpdateAccountStatus(true);
                             }
                         }
