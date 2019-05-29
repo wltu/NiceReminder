@@ -19,17 +19,25 @@
     <uses-feature android:name="android.hardware.location.gps" />
 
     <application
-        android:hardwareAccelerated="false"
-        android:largeHeap="true"
         android:allowBackup="true"
+        android:hardwareAccelerated="false"
         android:icon="@mipmap/ic_nicereminder"
         android:label="@string/app_name"
+        android:largeHeap="true"
         android:roundIcon="@mipmap/ic_nicereminder_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service
+            android:name=".LocationService"
+            android:enabled="true"
+            android:exported="true"></service>
+        <service
+            android:name=".TestService"
+            android:enabled="true"
+            android:exported="true" />
+        <service
             android:name=".DownloadService"
-            android:exported="false"></service>
+            android:exported="false" />
 
         <activity android:name=".ViewImage" />
         <activity android:name=".ChangePassword" />

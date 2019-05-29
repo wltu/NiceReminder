@@ -166,6 +166,57 @@ public class MainScreen extends AppCompatActivity
                     }
 
                 }
+
+                if(intent.getAction().equals("location_update")){
+
+                    double lat = Double.parseDouble(intent.getStringExtra("latitude"));
+                    double lon = Double.parseDouble(intent.getStringExtra("longitude"));
+                    currentLocation = lat + " : " + lon;
+
+                    if((latitude != -1 && longitude != -1)){
+                        if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
+
+                            int a = (int)(lat * 10000);
+                            int b = (int)(lon * 10000);
+                            latitude = (a - Math.abs(a % 2)) / 10000.0;
+                            longitude = (b - Math.abs(b % 2)) / 10000.0;
+
+                            newLocation = true;
+
+                            dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
+                                    .child("gallery").child(("" + latitude).replace('.', ' '))
+                                    .child(("" + longitude).replace('.', ' '));
+                            dataref.addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                    if(dataSnapshot.getValue() == null){
+                                        dataref.setValue("");
+                                    }else{
+                                        files = dataSnapshot.getValue(String.class);
+
+                                        if(newLocation && files.length() > 0)
+                                            sendNotification();
+
+                                        newLocation = false;
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                                }
+                            });
+                        }
+                    }else if(latitude == -1 && longitude == -1){
+                        int a = (int)(lat * 10000);
+                        int b = (int)(lon * 10000);
+                        latitude = (a - Math.abs(a % 2)) / 10000.0;
+                        longitude = (b - Math.abs(b % 2)) / 10000.0;
+                    }
+
+                    locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
+
+                }
             }
         }
     }
@@ -225,6 +276,9 @@ public class MainScreen extends AppCompatActivity
         context = getApplicationContext();
 
 
+        // Load Last Known Location...
+        loadData();
+
         // Register the listener with the Location Manager to receive location updates
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
@@ -232,81 +286,31 @@ public class MainScreen extends AppCompatActivity
             return;
         }
 
+        Intent locationIntent = new Intent(context, LocationService.class);
+        startService(locationIntent);
 
 
-        // Acquire a reference to the system Location Manager
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+//        // Acquire a reference to the system Location Manager
+//        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+//
+//
+//        // Define a listener that responds to location updates
+//        locationListener = new LocationListener() {
+//            public void onLocationChanged(Location location) {
+//
+//            }
+//
+//            public void onStatusChanged(String provider, int status, Bundle extras) {
+//            }
+//
+//            public void onProviderEnabled(String provider) {
+//            }
+//
+//            public void onProviderDisabled(String provider) {
+//            }
+//        };
 
-
-        // Define a listener that responds to location updates
-        locationListener = new LocationListener() {
-            public void onLocationChanged(Location location) {
-                double lat = location.getLatitude();
-                double lon = location.getLongitude();
-                currentLocation = lat + " : " + lon;
-//                locationTest.setText(currentLocation);
-
-
-                if((latitude != -1 && longitude != -1)){
-                    if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
-
-                        int a = (int)(lat * 10000);
-                        int b = (int)(lon * 10000);
-                        latitude = (a - Math.abs(a % 2)) / 10000.0;
-                        longitude = (b - Math.abs(b % 2)) / 10000.0;
-
-                        newLocation = true;
-
-                        dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
-                                            .child("gallery").child(("" + latitude).replace('.', ' '))
-                                            .child(("" + longitude).replace('.', ' '));
-                        dataref.addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                if(dataSnapshot.getValue() == null){
-                                    dataref.setValue("");
-                                }else{
-                                    files = dataSnapshot.getValue(String.class);
-
-                                    if(newLocation && files.length() > 0)
-                                        sendNotification();
-
-                                    newLocation = false;
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                            }
-                        });
-                    }
-                }else if(latitude == -1 && longitude == -1){
-                    int a = (int)(lat * 10000);
-                    int b = (int)(lon * 10000);
-                    latitude = (a - Math.abs(a % 2)) / 10000.0;
-                    longitude = (b - Math.abs(b % 2)) / 10000.0;
-                }
-
-                locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };
-
-
-
-
-        loadData();
-
-        requestLocation();
+        //requestLocation();
 
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
@@ -385,6 +389,7 @@ public class MainScreen extends AppCompatActivity
 
         IntentFilter filter = new IntentFilter();
         filter.addAction("download");
+        filter.addAction("location_update");
 
         backgroundTask = new BackgroundTask();
 
