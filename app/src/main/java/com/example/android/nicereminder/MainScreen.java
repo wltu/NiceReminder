@@ -143,12 +143,14 @@ public class MainScreen extends AppCompatActivity
     private int id;
 
     private BackgroundTask backgroundTask;
+    private BackgroundTask locationTask;
 
     private class BackgroundTask extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent != null){
                 if(intent.getAction().equals("download")){
+                    Log.d("Download", "OK");
                     if(mAuth.getCurrentUser() != null) {
                         try {
                             delete_setting.setVisible(true);
@@ -165,59 +167,61 @@ public class MainScreen extends AppCompatActivity
                         }
                     }
 
-                }
-
-                if(intent.getAction().equals("location_update")){
-
+                }else if(intent.getAction().equals("location_update")){
                     double lat = Double.parseDouble(intent.getStringExtra("latitude"));
                     double lon = Double.parseDouble(intent.getStringExtra("longitude"));
                     currentLocation = lat + " : " + lon;
 
                     if((latitude != -1 && longitude != -1)){
-                        if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
+                        if(lat != latitude | lon != longitude){
+                            latitude = lat;
+                            longitude = lon;
 
-                            int a = (int)(lat * 10000);
-                            int b = (int)(lon * 10000);
-                            latitude = (a - Math.abs(a % 2)) / 10000.0;
-                            longitude = (b - Math.abs(b % 2)) / 10000.0;
+//                            newLocation = true;
 
-                            newLocation = true;
-
-                            dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
-                                    .child("gallery").child(("" + latitude).replace('.', ' '))
-                                    .child(("" + longitude).replace('.', ' '));
-                            dataref.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                    if(dataSnapshot.getValue() == null){
-                                        dataref.setValue("");
-                                    }else{
-                                        files = dataSnapshot.getValue(String.class);
-
-                                        if(newLocation && files.length() > 0)
-                                            sendNotification();
-
-                                        newLocation = false;
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                                }
-                            });
+                            getLocationGallery();
                         }
                     }else if(latitude == -1 && longitude == -1){
-                        int a = (int)(lat * 10000);
-                        int b = (int)(lon * 10000);
-                        latitude = (a - Math.abs(a % 2)) / 10000.0;
-                        longitude = (b - Math.abs(b % 2)) / 10000.0;
-                    }
+                        latitude = lat;
+                        longitude = lon;
+
+                        getLocationGallery();
+                     }
 
                     locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
 
                 }
             }
+        }
+    }
+
+    private void getLocationGallery() {
+        if(mAuth.getCurrentUser() != null) {
+            dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
+                    .child("gallery").child(("" + latitude).replace('.', ' '))
+                    .child(("" + longitude).replace('.', ' '));
+            dataref.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.getValue() == null) {
+                        dataref.setValue("");
+                    } else {
+                        files = dataSnapshot.getValue(String.class);
+
+                        Intent intent = new Intent(context, DownloadService.class);
+                        intent.setAction("download");
+                        intent.putExtra("files", dataSnapshot.getValue(String.class));
+                        intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+                        intent.putExtra("longitude", ("" + longitude).replace('.', ' '));
+                        startService(intent);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
         }
     }
 
@@ -275,43 +279,6 @@ public class MainScreen extends AppCompatActivity
 
         context = getApplicationContext();
 
-
-        // Load Last Known Location...
-        loadData();
-
-        // Register the listener with the Location Manager to receive location updates
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            return;
-        }
-
-        Intent locationIntent = new Intent(context, LocationService.class);
-        startService(locationIntent);
-
-
-//        // Acquire a reference to the system Location Manager
-//        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-//
-//
-//        // Define a listener that responds to location updates
-//        locationListener = new LocationListener() {
-//            public void onLocationChanged(Location location) {
-//
-//            }
-//
-//            public void onStatusChanged(String provider, int status, Bundle extras) {
-//            }
-//
-//            public void onProviderEnabled(String provider) {
-//            }
-//
-//            public void onProviderDisabled(String provider) {
-//            }
-//        };
-
-        //requestLocation();
-
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
 
@@ -348,6 +315,27 @@ public class MainScreen extends AppCompatActivity
             }
         }
 
+        // Reset to New Location...
+        if(getIntent().getAction().equals("restart")){
+            latitude = Double.parseDouble(getIntent().getStringExtra(LATITUDE));
+            longitude = Double.parseDouble(getIntent().getStringExtra(LONGITUDE));
+
+            getLocationGallery();
+        }else {
+            // Load Last Known Location...
+            loadData();
+        }
+
+        // Register the listener with the Location Manager to receive location updates
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            return;
+        }
+
+        Intent locationIntent = new Intent(context, LocationService.class);
+        startService(locationIntent);
+
 
         if(mAuth.getCurrentUser() != null){
             Log.d("latitude", "" + latitude);
@@ -364,12 +352,12 @@ public class MainScreen extends AppCompatActivity
                         // This method is called once with the initial value and again
                         // whenever data at this location is updated.
                         if(files == null){
-                            Intent intent =  new Intent(context, DownloadService.class);
-                            intent.setAction("download");
-                            intent.putExtra("files", dataSnapshot.getValue(String.class));
-                            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
-                            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
-                            startService(intent);
+//                            Intent intent =  new Intent(context, DownloadService.class);
+//                            intent.setAction("download");
+//                            intent.putExtra("files", dataSnapshot.getValue(String.class));
+//                            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+//                            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
+//                            startService(intent);
                         }
 
                         files = dataSnapshot.getValue(String.class);
@@ -389,60 +377,17 @@ public class MainScreen extends AppCompatActivity
 
         IntentFilter filter = new IntentFilter();
         filter.addAction("download");
-        filter.addAction("location_update");
 
         backgroundTask = new BackgroundTask();
 
         registerReceiver(backgroundTask, filter);
+
+
+        filter = new IntentFilter();
+        filter.addAction("location_update");
+        locationTask = new BackgroundTask();
+        registerReceiver(locationTask, filter);
     }
-
-    private void sendNotification() {
-        String CHANNEL_ID = "CHANNEL";
-        CharSequence name = "NICE CHANNEL";
-        String Description = "Very nice channel";
-
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
-            mChannel.setDescription(Description);
-            mChannel.enableLights(true);
-            mChannel.setLightColor(Color.RED);
-            mChannel.enableVibration(true);
-            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-            mChannel.setShowBadge(true);
-
-            if (notificationManager != null) {
-
-                notificationManager.createNotificationChannel(mChannel);
-            }
-
-        }
-
-
-        Intent intent =  new Intent(context, DownloadService.class);
-        intent.setAction("download");
-
-
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
-
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.nicereminder)
-                .setContentTitle("Location Gallery")
-                .setContentText("You have been here before! CLick here to view the gallery from this location")
-                .setDefaults(Notification.DEFAULT_ALL)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent);
-
-
-        if (notificationManager != null) {
-            notificationManager.notify(id++, builder.build());
-        }
-    }
-
 
     @Override
     public void onBackPressed() {
@@ -680,6 +625,7 @@ public class MainScreen extends AppCompatActivity
         //mAuth.signOut();
 
         unregisterReceiver(backgroundTask);
+        unregisterReceiver(locationTask);
         super.onDestroy();
     }
 
@@ -749,6 +695,9 @@ public class MainScreen extends AppCompatActivity
         longitude = Double.parseDouble(sharedPreferences.getString(LONGITUDE, "-1"));
 
         locationTest.setText(sharedPreferences.getString(LATITUDE, "-1") + ", " + sharedPreferences.getString(LONGITUDE, "-1"));
+
+        if(latitude != -1 && longitude != -1)
+            getLocationGallery();
     }
 
     public static void UpdateAccountStatus(boolean signined){
