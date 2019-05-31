@@ -299,7 +299,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             }else{
                                 String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
 
-                                DatabaseReference dataref = FirebaseDatabase.getInstance().getReference("user").child(temp).child("gallery");
+                                DatabaseReference dataref = FirebaseDatabase.getInstance().getReference("user").child(temp).child("gallery")
+                                                            .child(MainScreen.getLatitude())
+                                                            .child(MainScreen.getLongitude());
 
                                 files = null;
                                 dataref.addValueEventListener(new ValueEventListener() {
@@ -307,14 +309,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                     public void onDataChange(DataSnapshot dataSnapshot) {
                                         // This method is called once with the initial value and again
                                         // whenever data at this location is updated.
-                                        if(files == null){
-                                            Intent intent =  new Intent(getApplicationContext(), DownloadService.class);
-                                            intent.setAction("download");
-                                            intent.putExtra("files", dataSnapshot.getValue(String.class));
-                                            startService(intent);
-                                        }
 
-                                        files = dataSnapshot.getValue(String.class);
+                                        if(dataSnapshot != null) {
+                                            if (files == null) {
+                                                Intent intent = new Intent(getApplicationContext(), DownloadService.class);
+                                                intent.setAction("download");
+                                                intent.putExtra("files", dataSnapshot.getValue(String.class));
+                                                startService(intent);
+                                            }
+
+                                            files = dataSnapshot.getValue(String.class);
+                                        }
                                     }
 
                                     @Override
