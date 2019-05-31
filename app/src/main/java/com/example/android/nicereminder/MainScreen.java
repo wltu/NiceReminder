@@ -327,11 +327,13 @@ public class MainScreen extends AppCompatActivity
         }
 
         IsPermissionGranted();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
 
         // Register the listener with the Location Manager to receive location updates
-        Intent locationIntent = new Intent(context, LocationService.class);
-        startService(locationIntent);
-
 
         if(mAuth.getCurrentUser() != null){
             Log.d("latitude", "" + latitude);
@@ -844,18 +846,43 @@ public class MainScreen extends AppCompatActivity
                     checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                             == PackageManager.PERMISSION_GRANTED) {
                 Log.v(TAG,"Permission is granted4");
+
+                Intent locationIntent = new Intent(context, LocationService.class);
+                startService(locationIntent);
                 return true;
             } else {
 
                 Log.v(TAG,"Permission is revoked4");
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
                                 Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+
+                Log.e("Granded", "Permission");
                 return false;
             }
         }
         else { //permission is automatically granted on sdk<23 upon installation
             Log.v(TAG,"Location Permission is granted4");
             return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case 0: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    Intent locationIntent = new Intent(context, LocationService.class);
+                    startService(locationIntent);
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                }
+                return;
+            }
         }
     }
 

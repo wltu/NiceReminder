@@ -68,7 +68,7 @@ public class LocationService extends Service {
         listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-
+                Log.e("Change", "Location");
                 double lat = location.getLatitude();
                 double lon = location.getLongitude();
 
