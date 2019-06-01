@@ -3,6 +3,7 @@ package com.example.android.nicereminder;
 import android.app.IntentService;
 import android.content.Intent;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.support.annotation.NonNull;
@@ -51,6 +52,7 @@ public class DownloadService extends IntentService {
     private String latitude;
 
     private DatabaseReference dataref;
+    private Bitmap bmap;
 
     private Intent done;
 
@@ -96,6 +98,10 @@ public class DownloadService extends IntentService {
                             Log.e("HTF", files);
                             String name;
                             int i = 0;
+
+                            Gallery.fileNames.clear();
+                            Gallery.imageGallery.clear();
+
                             Gallery.fileNames = new ArrayList<>();
                             Gallery.imageGallery = new ArrayList<>();
 
@@ -134,8 +140,10 @@ public class DownloadService extends IntentService {
 
                 Uri imageTaken = Uri.fromFile(new File(mCameraFileName));
 
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = 8;
 
-                Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName), 90));
+                Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName, options), 90));
 
                 String email = mAuth.getCurrentUser().getEmail();
 
@@ -179,7 +187,10 @@ public class DownloadService extends IntentService {
         File file = new File("/sdcard/" + Gallery.fileNames.get(index));
         if(file.exists()){
             index++;
-            Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90));
+            bmap = Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90);
+            bmap = Bitmap.createScaledBitmap(bmap, bmap.getWidth() / 2, bmap.getHeight() / 2, false);
+
+            Gallery.imageGallery.add(bmap);
             Log.d("File", "Exit");
 
             if(Gallery.fileNames.size() > 0 && index < Gallery.fileNames.size() && Gallery.imageGallery.size() < Gallery.fileNames.size()) {
