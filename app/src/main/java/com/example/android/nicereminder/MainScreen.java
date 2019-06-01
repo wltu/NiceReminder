@@ -93,7 +93,7 @@ public class MainScreen extends AppCompatActivity
     private Activity activity = this;
     private LocationManager locationManager;
     private LocationListener locationListener;
-    private boolean newLocation = false;
+    private boolean newLocation;
 
     // Saved Data Information.
     public static final String SHARDED_PREFS = "sharedPref";
@@ -111,18 +111,19 @@ public class MainScreen extends AppCompatActivity
     private static double longitude  = -1;
     private TextView locationTest;
 
-    private Intent locationIntent;
-    private Intent uploadIntent;
+    private Intent locationIntent = null;
+    private Intent uploadIntent = null;
+    private Intent downloadIntent = null;
 
     // Database Variables
     private static FirebaseAuth mAuth;
     private static FirebaseDatabase database;
-    private static DatabaseReference dataref;
+    private static DatabaseReference dataref = null;
     private static StorageReference mStorageRef;
 
     private static File profileFile = null;
 
-    private Intent downloadIntent;
+
 
     private String name;
 
@@ -159,10 +160,12 @@ public class MainScreen extends AppCompatActivity
                 if(intent.getAction().equals("upload")){
                     Log.e("Restart Location", "Nice");
                     startService(locationIntent);
+                    stopService(uploadIntent);
                 }else if(intent.getAction().equals("download")){
                     Log.d("Download", "OK");
 
-                    stopService(downloadIntent);
+                    if(downloadIntent != null)
+                        stopService(downloadIntent);
 //                    if(mAuth.getCurrentUser() != null) {
 //                        try {
 //                            delete_setting.setVisible(true);
@@ -190,13 +193,16 @@ public class MainScreen extends AppCompatActivity
                             longitude = lon;
 
 //                            newLocation = true;
-
+                            Log.d("Change Location", "0");
+                            newLocation = true;
                             getLocationGallery();
                         }
                     }else if(latitude == -1 && longitude == -1){
                         latitude = lat;
                         longitude = lon;
 
+                        Log.d("Change Location", "1");
+                        newLocation = true;
                         getLocationGallery();
                      }
 
@@ -217,8 +223,9 @@ public class MainScreen extends AppCompatActivity
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.getValue() == null) {
                         dataref.setValue("");
+                        newLocation = false;
                     } else {
-                        if(files == null || !files.equals(dataSnapshot.getValue(String.class))) {
+                        if(newLocation && (files == null || !files.equals(dataSnapshot.getValue(String.class)))) {
                             Log.e("Download", "NO");
 
                             files = dataSnapshot.getValue(String.class);
@@ -230,7 +237,11 @@ public class MainScreen extends AppCompatActivity
                             downloadIntent.putExtra("longitude", ("" + longitude).replace('.', ' '));
                             startService(downloadIntent);
                         }
+
+                        newLocation = false;
                     }
+
+                    dataref.removeEventListener(this);
                 }
 
                 @Override
@@ -248,6 +259,7 @@ public class MainScreen extends AppCompatActivity
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
 
         id = 0;
+        newLocation = true;
 
         setContentView(R.layout.activity_main_screen);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -336,6 +348,8 @@ public class MainScreen extends AppCompatActivity
             latitude = Double.parseDouble(getIntent().getStringExtra(LATITUDE));
             longitude = Double.parseDouble(getIntent().getStringExtra(LONGITUDE));
 
+            Log.d("Change Location", "2");
+            newLocation = true;
             getLocationGallery();
         }else {
             // Load Last Known Location...
@@ -621,6 +635,15 @@ public class MainScreen extends AppCompatActivity
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+
+        unregisterReceiver(backgroundTask);
+        unregisterReceiver(uploadTask);
+        unregisterReceiver(locationTask);
+    }
+
+    @Override
     protected void onDestroy() {
         SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -632,11 +655,6 @@ public class MainScreen extends AppCompatActivity
 
         editor.commit();
 
-        //mAuth.signOut();
-
-        unregisterReceiver(backgroundTask);
-        unregisterReceiver(uploadTask);
-        unregisterReceiver(locationTask);
         super.onDestroy();
     }
 
@@ -647,6 +665,7 @@ public class MainScreen extends AppCompatActivity
         if(requestCode == 1 && resultCode == RESULT_OK){
             Log.d("Picture", "Taken");
             //takePicture();
+
             uploadIntent =  new Intent(context, DownloadService.class);
             uploadIntent.setAction("upload");
             uploadIntent.putExtra("files", files);
@@ -656,6 +675,7 @@ public class MainScreen extends AppCompatActivity
             uploadIntent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
             stopService(locationIntent);
+            stopService(downloadIntent);
             startService(uploadIntent);
         }else if(requestCode == 2 && resultCode == RESULT_OK){
             Uri image = data.getData();
@@ -698,8 +718,11 @@ public class MainScreen extends AppCompatActivity
 
         locationTest.setText(sharedPreferences.getString(LATITUDE, "-1") + ", " + sharedPreferences.getString(LONGITUDE, "-1"));
 
-        if(latitude != -1 && longitude != -1)
+        if(latitude != -1 && longitude != -1) {
+            Log.d("Change Location", "3");
+            newLocation = true;
             getLocationGallery();
+        }
     }
 
     public static void UpdateAccountStatus(boolean signined){

@@ -215,7 +215,7 @@ public class Gallery extends Fragment {
 
         for(int i = 0; i < fileNames.size(); i++){
             if(selectImage.get(i)){
-                storageref = FirebaseStorage.getInstance().getReference().child("User/" + email + "/gallery/" + fileNames.get(i));
+                storageref = FirebaseStorage.getInstance().getReference().child("User/" + email + "/gallery/" + MainScreen.getLatitude() + "/" + MainScreen.getLongitude() + "/" + fileNames.get(i));
                 storageref.delete();
 
                 selectImage.remove(i);

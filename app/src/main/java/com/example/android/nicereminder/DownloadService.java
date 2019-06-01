@@ -113,6 +113,8 @@ public class DownloadService extends IntentService {
                             if(Gallery.fileNames.size() > 0)
                                 downLoadFiles();
                         }
+
+                        dataref.removeEventListener(this);
                     }
 
                     @Override
@@ -155,6 +157,9 @@ public class DownloadService extends IntentService {
 
                                 dataref.setValue(files);
 
+                                Intent done = new Intent();
+                                done.setAction("upload");
+                                sendBroadcast(done);
                                 Toast.makeText(getApplicationContext(), "Uploaded Image!", Toast.LENGTH_SHORT).show();
                             }
                         })
@@ -177,7 +182,7 @@ public class DownloadService extends IntentService {
             Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90));
             Log.d("File", "Exit");
 
-            if(Gallery.fileNames.size() > 0 && Gallery.imageGallery.size() < Gallery.fileNames.size()) {
+            if(Gallery.fileNames.size() > 0 && index < Gallery.fileNames.size() && Gallery.imageGallery.size() < Gallery.fileNames.size()) {
                 downLoadFiles();
             }else{
                 // Finish downloading all images
