@@ -111,6 +111,9 @@ public class MainScreen extends AppCompatActivity
     private static double longitude  = -1;
     private TextView locationTest;
 
+    private Intent locationIntent;
+    private Intent uploadIntent;
+
     // Database Variables
     private static FirebaseAuth mAuth;
     private static FirebaseDatabase database;
@@ -118,6 +121,8 @@ public class MainScreen extends AppCompatActivity
     private static StorageReference mStorageRef;
 
     private static File profileFile = null;
+
+    private Intent downloadIntent;
 
     private String name;
 
@@ -144,14 +149,20 @@ public class MainScreen extends AppCompatActivity
     private int id;
 
     private BackgroundTask backgroundTask;
+    private BackgroundTask uploadTask;
     private BackgroundTask locationTask;
 
     private class BackgroundTask extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent != null){
-                if(intent.getAction().equals("download")){
+                if(intent.getAction().equals("upload")){
+                    Log.e("Restart Location", "Nice");
+                    startService(locationIntent);
+                }else if(intent.getAction().equals("download")){
                     Log.d("Download", "OK");
+
+                    stopService(downloadIntent);
 //                    if(mAuth.getCurrentUser() != null) {
 //                        try {
 //                            delete_setting.setVisible(true);
@@ -207,14 +218,18 @@ public class MainScreen extends AppCompatActivity
                     if (dataSnapshot.getValue() == null) {
                         dataref.setValue("");
                     } else {
-                        files = dataSnapshot.getValue(String.class);
+                        if(files == null || !files.equals(dataSnapshot.getValue(String.class))) {
+                            Log.e("Download", "NO");
 
-                        Intent intent = new Intent(context, DownloadService.class);
-                        intent.setAction("download");
-                        intent.putExtra("files", dataSnapshot.getValue(String.class));
-                        intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
-                        intent.putExtra("longitude", ("" + longitude).replace('.', ' '));
-                        startService(intent);
+                            files = dataSnapshot.getValue(String.class);
+
+                            downloadIntent = new Intent(context, DownloadService.class);
+                            downloadIntent.setAction("download");
+                            downloadIntent.putExtra("files", dataSnapshot.getValue(String.class));
+                            downloadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+                            downloadIntent.putExtra("longitude", ("" + longitude).replace('.', ' '));
+                            startService(downloadIntent);
+                        }
                     }
                 }
 
@@ -373,9 +388,16 @@ public class MainScreen extends AppCompatActivity
         IntentFilter filter = new IntentFilter();
         filter.addAction("download");
 
+
         backgroundTask = new BackgroundTask();
 
         registerReceiver(backgroundTask, filter);
+
+        uploadTask = new BackgroundTask();
+        filter = new IntentFilter();
+        filter.addAction("upload");
+
+        registerReceiver(uploadTask, filter);
 
 
         filter = new IntentFilter();
@@ -613,6 +635,7 @@ public class MainScreen extends AppCompatActivity
         //mAuth.signOut();
 
         unregisterReceiver(backgroundTask);
+        unregisterReceiver(uploadTask);
         unregisterReceiver(locationTask);
         super.onDestroy();
     }
@@ -624,15 +647,16 @@ public class MainScreen extends AppCompatActivity
         if(requestCode == 1 && resultCode == RESULT_OK){
             Log.d("Picture", "Taken");
             //takePicture();
-            Intent intent =  new Intent(context, DownloadService.class);
-            intent.setAction("upload");
-            intent.putExtra("files", files);
-            intent.putExtra("image", mCameraFileName);
-            intent.putExtra("name", newPicFile);
-            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
-            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
+            uploadIntent =  new Intent(context, DownloadService.class);
+            uploadIntent.setAction("upload");
+            uploadIntent.putExtra("files", files);
+            uploadIntent.putExtra("image", mCameraFileName);
+            uploadIntent.putExtra("name", newPicFile);
+            uploadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+            uploadIntent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
-            startService(intent);
+            stopService(locationIntent);
+            startService(uploadIntent);
         }else if(requestCode == 2 && resultCode == RESULT_OK){
             Uri image = data.getData();
 
@@ -832,7 +856,7 @@ public class MainScreen extends AppCompatActivity
                             == PackageManager.PERMISSION_GRANTED) {
                 Log.v(TAG,"Permission is granted4");
 
-                Intent locationIntent = new Intent(context, LocationService.class);
+                locationIntent = new Intent(context, LocationService.class);
                 startService(locationIntent);
                 return true;
             } else {

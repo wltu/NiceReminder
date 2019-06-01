@@ -52,6 +52,8 @@ public class DownloadService extends IntentService {
 
     private DatabaseReference dataref;
 
+    private Intent done;
+
     @Override
     protected void onHandleIntent(Intent intent) {
         if (intent != null) {
@@ -118,32 +120,6 @@ public class DownloadService extends IntentService {
 
                     }
                 });
-
-
-//                if(files == null || files.length() == 0){
-//                    Intent done = new Intent();
-//                    done.setAction("download");
-//                    sendBroadcast(done);
-//                }else {
-//
-//                    String name;
-//                    int i = 0;
-//                    Gallery.fileNames = new ArrayList<>();
-//                    Gallery.imageGallery = new ArrayList<>();
-//
-//                    for (int j = 1; j <= files.length(); j++) {
-//                        if (j == files.length() || files.charAt(j) == ',') {
-//                            name = files.substring(i, j);
-//
-//                            Gallery.fileNames.add(name);
-//
-//                            Log.d("Set Names", name);
-//                            i = j + 1;
-//                        }
-//                    }
-//
-//                    downLoadFiles();
-//                }
             }else if(action.equals("upload")){
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
@@ -201,15 +177,14 @@ public class DownloadService extends IntentService {
             Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90));
             Log.d("File", "Exit");
 
-            if(Gallery.fileNames.size() > 0 && Gallery.imageGallery.size() != Gallery.fileNames.size()) {
+            if(Gallery.fileNames.size() > 0 && Gallery.imageGallery.size() < Gallery.fileNames.size()) {
                 downLoadFiles();
+            }else{
+                // Finish downloading all images
+                done = new Intent();
+                done.setAction("download");
+                sendBroadcast(done);
             }
-
-            // Finish downloading all images
-            Intent done = new Intent();
-            done.setAction("download");
-            sendBroadcast(done);
-
             return;
         }
 
