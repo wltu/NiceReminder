@@ -382,8 +382,6 @@ public class MainScreen extends AppCompatActivity
         filter.addAction("location_update");
         locationTask = new BackgroundTask();
         registerReceiver(locationTask, filter);
-
-        sendNotification();
     }
 
     @Override
@@ -411,20 +409,19 @@ public class MainScreen extends AppCompatActivity
         signin_setting = menu.findItem(R.id.action_signin);
         signout_setting = menu.findItem(R.id.action_signout);
 
+        fragmentManager = getFragmentManager();
 
-        FirebaseUser user = mAuth.getCurrentUser();   
-        if(user == null){                                                                       
-            //startActivity(new Intent(MainScreen.this, LoginActivity.class));
+        FirebaseUser user = mAuth.getCurrentUser();
+        if(user == null){
             UpdateAccountStatus(false);
-        }else{                                                                                  
-            // User is signed in                                                                
-            if(user.getEmail().isEmpty()){                                                      
-                //startActivity(new Intent(MainScreen.this, LoginActivity.class));
+        }else{
+            // User is signed in
+            if(user.getEmail().isEmpty()){
                 UpdateAccountStatus(false);
-            }else{                                                                              
-                UpdateAccountStatus(true);                                                      
-            }                                                                                   
-        }                                                                                       
+            }else{
+                UpdateAccountStatus(true);
+            }
+        }
 
         return true;
     }
@@ -882,61 +879,4 @@ public class MainScreen extends AppCompatActivity
         return ("" + longitude).replace('.', ' ');
     }
 
-    private void sendNotification() {
-        String CHANNEL_ID = "CHANNEL";
-        CharSequence name = "NICE CHANNEL";
-        String Description = "Very nice channel";
-
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
-            mChannel.setDescription(Description);
-            mChannel.enableLights(true);
-            mChannel.setLightColor(Color.RED);
-            mChannel.enableVibration(true);
-            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-            mChannel.setShowBadge(true);
-
-            if (notificationManager != null) {
-
-                notificationManager.createNotificationChannel(mChannel);
-            }
-
-        }
-
-
-        Intent intent =  new Intent(getApplicationContext(), LoginActivity.class);
-//        intent.setAction("restart");
-//        intent.putExtra("longitude", "" + longitude);
-//        intent.putExtra("latitude", "" + latitude);
-
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
-
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
-
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.nicereminder)
-                .setContentTitle("Location Gallery")
-                .setContentText("You have been here before! CLick here to view the gallery from this location")
-                .setDefaults(Notification.DEFAULT_ALL)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent);
-
-
-        if (notificationManager != null) {
-            Notification notification = builder.build();
-            notification.flags |= Notification.FLAG_AUTO_CANCEL;
-            notificationManager.notify(id, notification);
-
-            if(++id < 0){
-                id = 0;
-            }
-        }
-    }
 }
