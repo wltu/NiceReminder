@@ -201,7 +201,7 @@ public class DownloadService extends IntentService {
             Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90));
             Log.d("File", "Exit");
 
-            if(Gallery.imageGallery.size() != Gallery.fileNames.size()) {
+            if(Gallery.fileNames.size() > 0 && Gallery.imageGallery.size() != Gallery.fileNames.size()) {
                 downLoadFiles();
             }
 
