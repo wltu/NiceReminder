@@ -152,21 +152,21 @@ public class MainScreen extends AppCompatActivity
             if(intent != null){
                 if(intent.getAction().equals("download")){
                     Log.d("Download", "OK");
-                    if(mAuth.getCurrentUser() != null) {
-                        try {
-                            delete_setting.setVisible(true);
-
-                            Bundle bundle = new Bundle();
-                            bundle.putString("files", files);
-                            Gallery fragmet = new Gallery();
-                            fragmet.setArguments(bundle);
-                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
-                        }catch(IllegalStateException e){
-                            delete_setting.setVisible(false);
-
-                            Log.e("Error", "ok");
-                        }
-                    }
+//                    if(mAuth.getCurrentUser() != null) {
+//                        try {
+//                            delete_setting.setVisible(true);
+//
+//                            Bundle bundle = new Bundle();
+//                            bundle.putString("files", files);
+//                            Gallery fragmet = new Gallery();
+//                            fragmet.setArguments(bundle);
+//                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+//                        }catch(IllegalStateException e){
+//                            delete_setting.setVisible(false);
+//
+//                            Log.e("Error", "ok");
+//                        }
+//                    }
 
                 }else if(intent.getAction().equals("location_update")){
                     double lat = Double.parseDouble(intent.getStringExtra("latitude"));
@@ -239,7 +239,6 @@ public class MainScreen extends AppCompatActivity
         setSupportActionBar(toolbar);
 
         locationTest = findViewById(R.id.location);
-
         fragmentManager = getFragmentManager();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -318,7 +317,7 @@ public class MainScreen extends AppCompatActivity
         }
 
         // Reset to New Location...
-        if(getIntent().getAction().equals("restart")){
+        if(getIntent().getAction() != null && getIntent().getAction().equals("restart")){
             latitude = Double.parseDouble(getIntent().getStringExtra(LATITUDE));
             longitude = Double.parseDouble(getIntent().getStringExtra(LONGITUDE));
 
@@ -383,6 +382,8 @@ public class MainScreen extends AppCompatActivity
         filter.addAction("location_update");
         locationTask = new BackgroundTask();
         registerReceiver(locationTask, filter);
+
+        sendNotification();
     }
 
     @Override
@@ -582,12 +583,6 @@ public class MainScreen extends AppCompatActivity
     }
 
     private void takePicture() {
-//        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//
-//        if(intent.resolveActivity(getPackageManager()) != null){
-//            startActivityForResult(intent, 1);
-//        }
-
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
         Intent intent = new Intent();
@@ -674,16 +669,6 @@ public class MainScreen extends AppCompatActivity
         }
     }
 
-    private void requestLocation(){
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            return;
-        }
-
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-    }
-
     private void loadData(){
         SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
 
@@ -705,6 +690,7 @@ public class MainScreen extends AppCompatActivity
         signout.setVisible(signined);
 
         if(signined){
+            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
             String email = mAuth.getCurrentUser().getEmail();
             user_email.setText(email);
 
@@ -894,5 +880,63 @@ public class MainScreen extends AppCompatActivity
 
     public static String getLongitude(){
         return ("" + longitude).replace('.', ' ');
+    }
+
+    private void sendNotification() {
+        String CHANNEL_ID = "CHANNEL";
+        CharSequence name = "NICE CHANNEL";
+        String Description = "Very nice channel";
+
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+            mChannel.setDescription(Description);
+            mChannel.enableLights(true);
+            mChannel.setLightColor(Color.RED);
+            mChannel.enableVibration(true);
+            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mChannel.setShowBadge(true);
+
+            if (notificationManager != null) {
+
+                notificationManager.createNotificationChannel(mChannel);
+            }
+
+        }
+
+
+        Intent intent =  new Intent(getApplicationContext(), LoginActivity.class);
+//        intent.setAction("restart");
+//        intent.putExtra("longitude", "" + longitude);
+//        intent.putExtra("latitude", "" + latitude);
+
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+
+        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
+
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.nicereminder)
+                .setContentTitle("Location Gallery")
+                .setContentText("You have been here before! CLick here to view the gallery from this location")
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setPriority(Notification.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent);
+
+
+        if (notificationManager != null) {
+            Notification notification = builder.build();
+            notification.flags |= Notification.FLAG_AUTO_CANCEL;
+            notificationManager.notify(id, notification);
+
+            if(++id < 0){
+                id = 0;
+            }
+        }
     }
 }

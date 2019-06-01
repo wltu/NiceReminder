@@ -66,6 +66,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private String files;
 
+    private Intent intent;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -226,7 +228,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 //                            myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
 //                            myRef.setValue("");
 //
-                            MainScreen.UpdateAccountStatus(true);
+                            intent = new Intent(LoginActivity.this, MainScreen.class);
+                            startActivity(intent);
                         } else {
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
                                     Toast.LENGTH_SHORT).show();
@@ -330,7 +333,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
                                     }
                                 });
-                                MainScreen.UpdateAccountStatus(true);
+
+                                intent = new Intent(LoginActivity.this, MainScreen.class);
+                                startActivity(intent);
                             }
                         }
                     });
