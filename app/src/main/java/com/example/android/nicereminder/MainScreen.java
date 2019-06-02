@@ -122,6 +122,7 @@ public class MainScreen extends AppCompatActivity
 
     // Database Variables
     private static FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
     private static FirebaseDatabase database;
     private static DatabaseReference dataref = null;
     private static StorageReference mStorageRef;
@@ -339,6 +340,15 @@ public class MainScreen extends AppCompatActivity
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
 
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                if (firebaseAuth.getCurrentUser() != null) {
+                    Toast.makeText(context, "Password Changed!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        };
+
         database = FirebaseDatabase.getInstance();
 
         mStorageRef = FirebaseStorage.getInstance().getReference();
@@ -468,6 +478,7 @@ public class MainScreen extends AppCompatActivity
         filter.addAction("download");
 
 
+        //finish_activity
         backgroundTask = new BackgroundTask();
 
         registerReceiver(backgroundTask, filter);
@@ -491,7 +502,8 @@ public class MainScreen extends AppCompatActivity
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
-            super.onBackPressed();
+            Log.d("OnBack", "ok");
+            moveTaskToBack(true);
         }
     }
 
@@ -714,14 +726,18 @@ public class MainScreen extends AppCompatActivity
     @Override
     protected void onPause() {
         super.onPause();
-
-        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putInt(FRAGMENT_STATE, fragmentID);
+        Log.d("Pause", "NN");
+        ExitApp();
 
         unregisterReceiver(backgroundTask);
         unregisterReceiver(uploadTask);
         unregisterReceiver(locationTask);
+    }
+
+    private void ExitApp() {
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(FRAGMENT_STATE, fragmentID);
     }
 
     @Override
@@ -922,7 +938,6 @@ public class MainScreen extends AppCompatActivity
     }
 
     public static void SignOut(){
-
         mAuth.signOut();
         profileFile = null;
         UpdateAccountStatus(false);
@@ -932,8 +947,6 @@ public class MainScreen extends AppCompatActivity
 
     public static void changePassword(String password){
         mAuth.getCurrentUser().updatePassword(password);
-
-        Toast.makeText(context, "Password Changed!", Toast.LENGTH_SHORT).show();
     }
 
     public static void deleteAccount(){
@@ -1010,63 +1023,5 @@ public class MainScreen extends AppCompatActivity
 
     public static String getLongitude(){
         return ("" + longitude).replace('.', ' ');
-    }
-
-    private void sendNotification() {
-        String CHANNEL_ID = "CHANNEL";
-        CharSequence name = "NICE CHANNEL";
-        String Description = "Very nice channel";
-
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
-            mChannel.setDescription(Description);
-            mChannel.enableLights(true);
-            mChannel.setLightColor(Color.RED);
-            mChannel.enableVibration(true);
-            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-            mChannel.setShowBadge(true);
-
-            if (notificationManager != null) {
-
-                notificationManager.createNotificationChannel(mChannel);
-            }
-
-        }
-
-
-        Intent intent =  new Intent(getApplicationContext(), MainScreen.class);
-        intent.setAction("restart");
-        intent.putExtra("longitude", "-119.8634");
-        intent.putExtra("latitude", "34.418");
-
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-
-
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.nicereminder)
-                .setContentTitle("Location Gallery")
-                .setContentText("You have been here before! CLick here to view the gallery from this location")
-                .setDefaults(Notification.DEFAULT_ALL)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent);
-
-
-        if (notificationManager != null) {
-            Notification notification = builder.build();
-            notification.flags |= Notification.FLAG_AUTO_CANCEL;
-            notificationManager.notify(id, notification);
-
-            if(++id < 0){
-                id = 0;
-            }
-        }
     }
 }

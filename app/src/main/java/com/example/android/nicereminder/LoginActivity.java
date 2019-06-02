@@ -225,10 +225,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             DatabaseReference myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("name");
                             myRef.setValue(mNameView.getText().toString());
 
-//                            myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
-//                            myRef.setValue("");
-//
+
                             intent = new Intent(LoginActivity.this, MainScreen.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
                             startActivity(intent);
                         } else {
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
@@ -335,6 +334,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                 });
 
                                 intent = new Intent(LoginActivity.this, MainScreen.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);
                             }
                         }
