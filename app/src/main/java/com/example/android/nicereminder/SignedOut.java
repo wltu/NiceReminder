@@ -1,19 +1,50 @@
 package com.example.android.nicereminder;
 
-import android.app.Fragment;
+
+import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.preference.Preference;
+import android.preference.PreferenceFragment;
 
 
-public class SignedOut extends Fragment {
-    @Nullable
+
+public class SignedOut extends PreferenceFragment {
+
+
+    private Preference signin;
+    private Preference signup;
+    private Intent intent;
+
+
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable final ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_signedout, container, false);
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Load the preferences from an XML resource
+        addPreferencesFromResource(R.xml.activity_signedout);
+
+        signin = findPreference("signin");
+        signup = findPreference("signup");
+
+        signin.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                intent = new Intent(getActivity(), LoginActivity.class);
+                intent.putExtra("Signup", false);
+                startActivity(intent);
+
+                return false;
+            }
+        });
+
+        signup.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                intent = new Intent(getActivity(), LoginActivity.class);
+                intent.putExtra("Signup", true);
+                startActivity(intent);
+                return false;
+            }
+        });
     }
 }

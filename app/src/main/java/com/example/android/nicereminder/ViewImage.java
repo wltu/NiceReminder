@@ -1,6 +1,7 @@
 package com.example.android.nicereminder;
 
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.support.v4.view.MotionEventCompat;
@@ -28,6 +29,7 @@ public class ViewImage extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
 
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         ActionBar actionBar = getSupportActionBar();

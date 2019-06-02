@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent">
+
+    <PreferenceCategory
+        android:title="User Account">
+        <Preference
+            android:title="@string/action_sign_in"
+            android:key="signin"
+            android:summary="Signin of your account"
+            />
+        <Preference
+            android:title="@string/action_sign_up"
+            android:key="signup"
+            android:summary="Signup for an account"
+            />
+    </PreferenceCategory>
+</PreferenceScreen>

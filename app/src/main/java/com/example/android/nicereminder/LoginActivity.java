@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -65,9 +66,13 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private String files;
 
+    private Intent intent;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
+
         setContentView(R.layout.activity_login);
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -223,7 +228,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 //                            myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery");
 //                            myRef.setValue("");
 //
-                            MainScreen.UpdateAccountStatus(true);
+                            intent = new Intent(LoginActivity.this, MainScreen.class);
+                            startActivity(intent);
                         } else {
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
                                     Toast.LENGTH_SHORT).show();
@@ -299,7 +305,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             }else{
                                 String temp = mAuth.getCurrentUser().getEmail().replace('.', ' ');
 
-                                DatabaseReference dataref = FirebaseDatabase.getInstance().getReference("user").child(temp).child("gallery");
+                                DatabaseReference dataref = FirebaseDatabase.getInstance().getReference("user").child(temp).child("gallery")
+                                                            .child(MainScreen.getLatitude())
+                                                            .child(MainScreen.getLongitude());
 
                                 files = null;
                                 dataref.addValueEventListener(new ValueEventListener() {
@@ -307,14 +315,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                     public void onDataChange(DataSnapshot dataSnapshot) {
                                         // This method is called once with the initial value and again
                                         // whenever data at this location is updated.
-                                        if(files == null){
-                                            Intent intent =  new Intent(getApplicationContext(), DownloadService.class);
-                                            intent.setAction("download");
-                                            intent.putExtra("files", dataSnapshot.getValue(String.class));
-                                            startService(intent);
-                                        }
 
-                                        files = dataSnapshot.getValue(String.class);
+                                        if(dataSnapshot != null) {
+                                            if (files == null) {
+                                                Intent intent = new Intent(getApplicationContext(), DownloadService.class);
+                                                intent.setAction("download");
+                                                intent.putExtra("files", dataSnapshot.getValue(String.class));
+                                                startService(intent);
+                                            }
+
+                                            files = dataSnapshot.getValue(String.class);
+                                        }
                                     }
 
                                     @Override
@@ -322,7 +333,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
                                     }
                                 });
-                                MainScreen.UpdateAccountStatus(true);
+
+                                intent = new Intent(LoginActivity.this, MainScreen.class);
+                                startActivity(intent);
                             }
                         }
                     });

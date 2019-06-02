@@ -14,6 +14,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -71,6 +72,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Calendar;
+import java.util.HashMap;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -80,6 +82,7 @@ public class MainScreen extends AppCompatActivity
 
     private String TAG = "Permission";
 
+
     private Bitmap image;
     private Uri imageTaken;
     private String mCameraFileName;
@@ -88,16 +91,19 @@ public class MainScreen extends AppCompatActivity
     private static String files = null;
 
     private static FragmentManager fragmentManager;
+    private static int fragmentID;
     private static Context context;
     private Activity activity = this;
     private LocationManager locationManager;
     private LocationListener locationListener;
-    private boolean newLocation = false;
+    private boolean newLocation;
 
     // Saved Data Information.
     public static final String SHARDED_PREFS = "sharedPref";
     public static final String LATITUDE = "latitude";
     public static final String LONGITUDE = "longitude";
+    private static final String FRAGMENT_STATE = "fragment";
+
     public static final double FAR_DISTANCE = 0.0003;  // Change Margin...
     public static final double NEAR_DISTANCE = 0.0001;  // Change Margin...
     /*
@@ -110,14 +116,20 @@ public class MainScreen extends AppCompatActivity
     private static double longitude  = -1;
     private TextView locationTest;
 
+    private Intent locationIntent = null;
+    private Intent uploadIntent = null;
+    private Intent downloadIntent = null;
+
     // Database Variables
     private static FirebaseAuth mAuth;
     private static FirebaseDatabase database;
-    private static DatabaseReference dataref;
+    private static DatabaseReference dataref = null;
     private static StorageReference mStorageRef;
 
     private static File profileFile = null;
 
+
+    private boolean inGallery;
     private String name;
 
 
@@ -141,32 +153,128 @@ public class MainScreen extends AppCompatActivity
 
 
     private int id;
+    private boolean restart;
 
     private BackgroundTask backgroundTask;
+    private BackgroundTask uploadTask;
+    private BackgroundTask locationTask;
 
     private class BackgroundTask extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent != null){
-                if(intent.getAction().equals("download")){
-                    if(mAuth.getCurrentUser() != null) {
-                        try {
-                            delete_setting.setVisible(true);
+                if(intent.getAction().equals("upload")){
+                    Log.e("Restart Location", "Nice");
+                    stopService(uploadIntent);
+                }else if(intent.getAction().equals("download")){
+                    Log.d("Download", "OK");
 
+                    if(downloadIntent != null) {
+                        stopService(downloadIntent);
+                        if (mAuth.getCurrentUser() != null && (restart | inGallery)) {
+                            try {
+                                delete_setting.setVisible(true);
+
+                                inGallery = true;
+                                Bundle bundle = new Bundle();
+                                bundle.putString("files", files);
+                                Gallery fragmet = new Gallery();
+                                fragmet.setArguments(bundle);
+                                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                                fragmentID = 0;
+                            } catch (IllegalStateException e) {
+                                delete_setting.setVisible(false);
+
+                                Log.e("Error", "ok");
+                            }
+                        }
+                    }
+
+                    restart = false;
+                }else if(intent.getAction().equals("location_update")){
+                    double lat = Double.parseDouble(intent.getStringExtra("latitude"));
+                    double lon = Double.parseDouble(intent.getStringExtra("longitude"));
+                    currentLocation = lat + " : " + lon;
+
+                    if((latitude != -1 && longitude != -1)){
+                        if(lat != latitude | lon != longitude){
+                            latitude = lat;
+                            longitude = lon;
+
+//                            newLocation = true;
+                            Log.d("Change Location", "0");
+                            newLocation = true;
+                            getLocationGallery();
+                        }
+                    }else if(latitude == -1 && longitude == -1){
+                        latitude = lat;
+                        longitude = lon;
+
+                        Log.d("Change Location", "1");
+                        newLocation = true;
+                        getLocationGallery();
+                     }
+
+                    locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
+
+                }
+            }
+        }
+    }
+
+    private void getLocationGallery() {
+        if(mAuth.getCurrentUser() != null) {
+            dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
+                    .child("gallery").child(("" + latitude).replace('.', ' '))
+                    .child(("" + longitude).replace('.', ' '));
+            dataref.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.getValue() == null) {
+                        dataref.setValue("");
+                        files = "";
+                        Gallery.fileNames.clear();
+                        Gallery.imageGallery.clear();
+
+                        if(inGallery){
                             Bundle bundle = new Bundle();
                             bundle.putString("files", files);
                             Gallery fragmet = new Gallery();
                             fragmet.setArguments(bundle);
-                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
-                        }catch(IllegalStateException e){
-                            delete_setting.setVisible(false);
 
-                            Log.e("Error", "ok");
+                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                            fragmentID = 0;
                         }
+
+
+                        newLocation = false;
+                    } else {
+                        if(newLocation && (files == null || !files.equals(dataSnapshot.getValue(String.class)))) {
+                            Log.e("Download", "NO");
+
+                            files = dataSnapshot.getValue(String.class);
+
+                            downloadIntent = new Intent(context, DownloadService.class);
+                            downloadIntent.setAction("download");
+                            downloadIntent.putExtra("files", dataSnapshot.getValue(String.class));
+                            downloadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+                            downloadIntent.putExtra("longitude", ("" + longitude).replace('.', ' '));
+                            startService(downloadIntent);
+                        }
+
+                        newLocation = false;
                     }
 
+                    dataref.removeEventListener(this);
                 }
-            }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
         }
     }
 
@@ -174,15 +282,18 @@ public class MainScreen extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
 
         id = 0;
+        newLocation = true;
+        restart = false;
+        inGallery = false;
 
         setContentView(R.layout.activity_main_screen);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         locationTest = findViewById(R.id.location);
-
         fragmentManager = getFragmentManager();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -191,6 +302,7 @@ public class MainScreen extends AppCompatActivity
             public void onClick(View view) {
                 if(mAuth.getCurrentUser() != null) {
                     fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
+
                     takePicture();
                 }
             }
@@ -223,90 +335,6 @@ public class MainScreen extends AppCompatActivity
 
 
         context = getApplicationContext();
-
-
-        // Register the listener with the Location Manager to receive location updates
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            return;
-        }
-
-
-
-        // Acquire a reference to the system Location Manager
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-
-        // Define a listener that responds to location updates
-        locationListener = new LocationListener() {
-            public void onLocationChanged(Location location) {
-                double lat = location.getLatitude();
-                double lon = location.getLongitude();
-                currentLocation = lat + " : " + lon;
-//                locationTest.setText(currentLocation);
-
-
-                if((latitude != -1 && longitude != -1)){
-                    if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
-
-                        int a = (int)(lat * 10000);
-                        int b = (int)(lon * 10000);
-                        latitude = (a - Math.abs(a % 2)) / 10000.0;
-                        longitude = (b - Math.abs(b % 2)) / 10000.0;
-
-                        newLocation = true;
-
-                        dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
-                                            .child("gallery").child(("" + latitude).replace('.', ' '))
-                                            .child(("" + longitude).replace('.', ' '));
-                        dataref.addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                if(dataSnapshot.getValue() == null){
-                                    dataref.setValue("");
-                                }else{
-                                    files = dataSnapshot.getValue(String.class);
-
-                                    if(newLocation && files.length() > 0)
-                                        sendNotification();
-
-                                    newLocation = false;
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                            }
-                        });
-                    }
-                }else if(latitude == -1 && longitude == -1){
-                    int a = (int)(lat * 10000);
-                    int b = (int)(lon * 10000);
-                    latitude = (a - Math.abs(a % 2)) / 10000.0;
-                    longitude = (b - Math.abs(b % 2)) / 10000.0;
-                }
-
-                locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };
-
-
-
-
-        loadData();
-
-        requestLocation();
 
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
@@ -344,6 +372,63 @@ public class MainScreen extends AppCompatActivity
             }
         }
 
+        // Reset to New Location...
+        if(getIntent().getAction() != null && getIntent().getAction().equals("restart")){
+            latitude = Double.parseDouble(getIntent().getStringExtra(LATITUDE));
+            longitude = Double.parseDouble(getIntent().getStringExtra(LONGITUDE));
+
+            restart = true;
+            locationTest.setText(latitude + ": " + longitude);
+            Log.d("Change Location", "2");
+            newLocation = true;
+            getLocationGallery();
+        }else {
+            // Load Last Known Location...
+            loadData();
+        }
+
+        IsPermissionGranted();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("Resume", "OK");
+
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+
+        fragmentID = sharedPreferences.getInt(FRAGMENT_STATE, -1);
+
+        if(fragmentID != -1) {
+            switch(fragmentID){
+                case 0:
+                    Bundle bundle = new Bundle();
+                    bundle.putString("files", files);
+                    Gallery fragmet = new Gallery();
+                    fragmet.setArguments(bundle);
+
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                    break;
+                case 1:
+                    getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+                    break;
+                case 2:
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
+                    break;
+                case 3:
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
+                    break;
+                default:
+            }
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+//        sendNotification();
+        // Register the listener with the Location Manager to receive location updates
 
         if(mAuth.getCurrentUser() != null){
             Log.d("latitude", "" + latitude);
@@ -360,12 +445,12 @@ public class MainScreen extends AppCompatActivity
                         // This method is called once with the initial value and again
                         // whenever data at this location is updated.
                         if(files == null){
-                            Intent intent =  new Intent(context, DownloadService.class);
-                            intent.setAction("download");
-                            intent.putExtra("files", dataSnapshot.getValue(String.class));
-                            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
-                            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
-                            startService(intent);
+//                            Intent intent =  new Intent(context, DownloadService.class);
+//                            intent.setAction("download");
+//                            intent.putExtra("files", dataSnapshot.getValue(String.class));
+//                            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+//                            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
+//                            startService(intent);
                         }
 
                         files = dataSnapshot.getValue(String.class);
@@ -379,65 +464,26 @@ public class MainScreen extends AppCompatActivity
             });
         }
 
-
-        isReadStoragePermissionGranted();
-        isWriteStoragePermissionGranted();
-
         IntentFilter filter = new IntentFilter();
         filter.addAction("download");
+
 
         backgroundTask = new BackgroundTask();
 
         registerReceiver(backgroundTask, filter);
+
+        uploadTask = new BackgroundTask();
+        filter = new IntentFilter();
+        filter.addAction("upload");
+
+        registerReceiver(uploadTask, filter);
+
+
+        filter = new IntentFilter();
+        filter.addAction("location_update");
+        locationTask = new BackgroundTask();
+        registerReceiver(locationTask, filter);
     }
-
-    private void sendNotification() {
-        String CHANNEL_ID = "CHANNEL";
-        CharSequence name = "NICE CHANNEL";
-        String Description = "Very nice channel";
-
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
-            mChannel.setDescription(Description);
-            mChannel.enableLights(true);
-            mChannel.setLightColor(Color.RED);
-            mChannel.enableVibration(true);
-            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-            mChannel.setShowBadge(true);
-
-            if (notificationManager != null) {
-
-                notificationManager.createNotificationChannel(mChannel);
-            }
-
-        }
-
-
-        Intent intent =  new Intent(context, DownloadService.class);
-        intent.setAction("download");
-
-
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
-
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.nicereminder)
-                .setContentTitle("Location Gallery")
-                .setContentText("You have been here before! CLick here to view the gallery from this location")
-                .setDefaults(Notification.DEFAULT_ALL)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent);
-
-
-        if (notificationManager != null) {
-            notificationManager.notify(id++, builder.build());
-        }
-    }
-
 
     @Override
     public void onBackPressed() {
@@ -464,20 +510,19 @@ public class MainScreen extends AppCompatActivity
         signin_setting = menu.findItem(R.id.action_signin);
         signout_setting = menu.findItem(R.id.action_signout);
 
+        fragmentManager = getFragmentManager();
 
-        FirebaseUser user = mAuth.getCurrentUser();   
-        if(user == null){                                                                       
-            //startActivity(new Intent(MainScreen.this, LoginActivity.class));
+        FirebaseUser user = mAuth.getCurrentUser();
+        if(user == null){
             UpdateAccountStatus(false);
-        }else{                                                                                  
-            // User is signed in                                                                
-            if(user.getEmail().isEmpty()){                                                      
-                //startActivity(new Intent(MainScreen.this, LoginActivity.class));
+        }else{
+            // User is signed in
+            if(user.getEmail().isEmpty()){
                 UpdateAccountStatus(false);
-            }else{                                                                              
-                UpdateAccountStatus(true);                                                      
-            }                                                                                   
-        }                                                                                       
+            }else{
+                UpdateAccountStatus(true);
+            }
+        }
 
         return true;
     }
@@ -495,6 +540,7 @@ public class MainScreen extends AppCompatActivity
         //noinspection SimplifiableIfStatement
 
         delete_setting.setVisible(false);
+        inGallery = false;
 
         switch(id) {
             case R.id.action_delete_button:
@@ -524,6 +570,8 @@ public class MainScreen extends AppCompatActivity
 
                         fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
 
+                        fragmentID = 0;
+
                         delete_setting.setTitle(R.string.action_delete);
                         delete_setting_button.setVisible(false);
                     }
@@ -551,6 +599,8 @@ public class MainScreen extends AppCompatActivity
                     navigationView.setCheckedItem(R.id.nav_manage);
                     //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
                     getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+
+                    fragmentID = 1;
                 }
 
                 return true;
@@ -592,6 +642,8 @@ public class MainScreen extends AppCompatActivity
 
         delete_setting.setVisible(false);
 
+        inGallery = false;
+
         if (id == R.id.nav_camera) {
             setDeleteOption();
             if(mAuth.getCurrentUser() != null) {
@@ -600,6 +652,7 @@ public class MainScreen extends AppCompatActivity
             }
         } else if (id == R.id.nav_gallery) {
             if(mAuth.getCurrentUser() != null) {
+                inGallery = true;
                 delete_setting.setVisible(true);
 
                 Bundle bundle = new Bundle();
@@ -608,6 +661,8 @@ public class MainScreen extends AppCompatActivity
                 fragmet.setArguments(bundle);
 
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                fragmentID = 0;
             }
         } else if (id == R.id.nav_slideshow) {
 
@@ -615,6 +670,8 @@ public class MainScreen extends AppCompatActivity
             setDeleteOption();
             if(mAuth.getCurrentUser() != null){
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+
+                fragmentID = 1;
             }
         } else if (id == R.id.nav_signin) {
             intent = new Intent(MainScreen.this, LoginActivity.class);
@@ -636,12 +693,6 @@ public class MainScreen extends AppCompatActivity
     }
 
     private void takePicture() {
-//        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//
-//        if(intent.resolveActivity(getPackageManager()) != null){
-//            startActivityForResult(intent, 1);
-//        }
-
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
         Intent intent = new Intent();
@@ -661,6 +712,19 @@ public class MainScreen extends AppCompatActivity
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(FRAGMENT_STATE, fragmentID);
+
+        unregisterReceiver(backgroundTask);
+        unregisterReceiver(uploadTask);
+        unregisterReceiver(locationTask);
+    }
+
+    @Override
     protected void onDestroy() {
         SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -669,12 +733,10 @@ public class MainScreen extends AppCompatActivity
         Log.d("Store", "" + longitude);
         editor.putString(LATITUDE, "" + latitude);
         editor.putString(LONGITUDE, "" + longitude);
+        editor.putInt(FRAGMENT_STATE, -1);
 
         editor.commit();
 
-        //mAuth.signOut();
-
-        unregisterReceiver(backgroundTask);
         super.onDestroy();
     }
 
@@ -685,15 +747,17 @@ public class MainScreen extends AppCompatActivity
         if(requestCode == 1 && resultCode == RESULT_OK){
             Log.d("Picture", "Taken");
             //takePicture();
-            Intent intent =  new Intent(context, DownloadService.class);
-            intent.setAction("upload");
-            intent.putExtra("files", files);
-            intent.putExtra("image", mCameraFileName);
-            intent.putExtra("name", newPicFile);
-            intent.putExtra("latitude", ("" + latitude).replace('.', ' '));
-            intent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
-            startService(intent);
+            uploadIntent =  new Intent(context, DownloadService.class);
+            uploadIntent.setAction("upload");
+            uploadIntent.putExtra("files", files);
+            uploadIntent.putExtra("image", mCameraFileName);
+            uploadIntent.putExtra("name", newPicFile);
+            uploadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+            uploadIntent.putExtra("longitude",("" + longitude).replace('.', ' '));
+
+            stopService(downloadIntent);
+            startService(uploadIntent);
         }else if(requestCode == 2 && resultCode == RESULT_OK){
             Uri image = data.getData();
 
@@ -727,16 +791,6 @@ public class MainScreen extends AppCompatActivity
         }
     }
 
-    private void requestLocation(){
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            return;
-        }
-
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-    }
-
     private void loadData(){
         SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
 
@@ -744,6 +798,12 @@ public class MainScreen extends AppCompatActivity
         longitude = Double.parseDouble(sharedPreferences.getString(LONGITUDE, "-1"));
 
         locationTest.setText(sharedPreferences.getString(LATITUDE, "-1") + ", " + sharedPreferences.getString(LONGITUDE, "-1"));
+
+        if(latitude != -1 && longitude != -1) {
+            Log.d("Change Location", "3");
+            newLocation = true;
+            getLocationGallery();
+        }
     }
 
     public static void UpdateAccountStatus(boolean signined){
@@ -755,6 +815,10 @@ public class MainScreen extends AppCompatActivity
         signout.setVisible(signined);
 
         if(signined){
+            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
+
+            fragmentID = 2;
+
             String email = mAuth.getCurrentUser().getEmail();
             user_email.setText(email);
 
@@ -833,6 +897,8 @@ public class MainScreen extends AppCompatActivity
         }else{
             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
 
+            fragmentID = 3;
+
             user_image.setImageResource(R.mipmap.ic_launcher_round);
             user_name.setText(R.string.nav_header_title);
             user_email.setText(R.string.nav_header_subtitle);
@@ -888,43 +954,53 @@ public class MainScreen extends AppCompatActivity
 
 
     // Check Permission
-    // Check Read Storage Permission
-    public  boolean isReadStoragePermissionGranted() {
+
+    private boolean IsPermissionGranted() {
         if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED) {
-                Log.v(TAG,"Permission is granted1");
+            if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED &&
+                    checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                            == PackageManager.PERMISSION_GRANTED &&
+                    checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            == PackageManager.PERMISSION_GRANTED) {
+                Log.v(TAG,"Permission is granted4");
+
+                locationIntent = new Intent(context, LocationService.class);
+                startService(locationIntent);
                 return true;
             } else {
 
-                Log.v(TAG,"Permission is revoked1");
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 3);
+                Log.v(TAG,"Permission is revoked4");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+
+                Log.e("Granded", "Permission");
                 return false;
             }
         }
         else { //permission is automatically granted on sdk<23 upon installation
-            Log.v(TAG,"Permission is granted1");
+            Log.v(TAG,"Location Permission is granted4");
             return true;
         }
     }
 
-    // Check Write Storage Permission
-    public  boolean isWriteStoragePermissionGranted() {
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED) {
-                Log.v(TAG,"Permission is granted2");
-                return true;
-            } else {
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case 0: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-                Log.v(TAG,"Permission is revoked2");
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
-                return false;
+                    Intent locationIntent = new Intent(context, LocationService.class);
+                    startService(locationIntent);
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                }
+                return;
             }
-        }
-        else { //permission is automatically granted on sdk<23 upon installation
-            Log.v(TAG,"Permission is granted2");
-            return true;
         }
     }
 
@@ -934,5 +1010,63 @@ public class MainScreen extends AppCompatActivity
 
     public static String getLongitude(){
         return ("" + longitude).replace('.', ' ');
+    }
+
+    private void sendNotification() {
+        String CHANNEL_ID = "CHANNEL";
+        CharSequence name = "NICE CHANNEL";
+        String Description = "Very nice channel";
+
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+            mChannel.setDescription(Description);
+            mChannel.enableLights(true);
+            mChannel.setLightColor(Color.RED);
+            mChannel.enableVibration(true);
+            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mChannel.setShowBadge(true);
+
+            if (notificationManager != null) {
+
+                notificationManager.createNotificationChannel(mChannel);
+            }
+
+        }
+
+
+        Intent intent =  new Intent(getApplicationContext(), MainScreen.class);
+        intent.setAction("restart");
+        intent.putExtra("longitude", "-119.8634");
+        intent.putExtra("latitude", "34.418");
+
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.nicereminder)
+                .setContentTitle("Location Gallery")
+                .setContentText("You have been here before! CLick here to view the gallery from this location")
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setPriority(Notification.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent);
+
+
+        if (notificationManager != null) {
+            Notification notification = builder.build();
+            notification.flags |= Notification.FLAG_AUTO_CANCEL;
+            notificationManager.notify(id, notification);
+
+            if(++id < 0){
+                id = 0;
+            }
+        }
     }
 }

@@ -21,7 +21,11 @@
 #### Week 4 (5/19 - 5/25):
  For this week, the main work is done on the GPS location based notification for the application. The notification is used to remind the user of the image gallery that they have taken at around the current location. The location is approximated with a square grid using latitude and longitude as the coordinates. Within each location grid, it is designed to have some margin on each side to prevent frequent change of grids. Each grid is map to a location image gallery for the user and can only be accessed by the user when they are in that location. The notification pops up whenver the user enter another location that have an existing image gallery, As the user click on the notificaiton, the images is loaded into the device and display to the user. As of now, the notification only show up when the user is using the app directly. 
  
- Next step, allow the application to run in the backgroun. Either the GPS/notification part is always running even when the application is closed or just having the appliction be able to run when it is in the background. Other work, reorganize code base for cleanness and some testing for bugs.
+ Next step, allow the application to run in the background. Either the GPS/notification part is always running even when the application is closed or just having the appliction be able to run when it is in the background. Other work, reorganize code base for cleanness and some testing for bugs.
  
 #### Week 5 (5/26 - 6/1):
+ Many of the final parts of the project is worked on this week.The main components worked on this week includes background service tasks and notifications. The background service task are used for downloading and images for the user's current location gallery and also used for localization. The GPS localization is setup to be always running even if the application is not running and will send out a notification to the user's device if they arrived in a different location that have an existing gallery. Various bugs were added by adding the service task and were mostly fixed.
+ 
+ Final work, fix any bugs left on the application and organize the codebase.
+ 
 #### Project Demo (6/5):

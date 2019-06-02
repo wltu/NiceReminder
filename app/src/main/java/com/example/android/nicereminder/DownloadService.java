@@ -3,6 +3,7 @@ package com.example.android.nicereminder;
 import android.app.IntentService;
 import android.content.Intent;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.support.annotation.NonNull;
@@ -51,6 +52,9 @@ public class DownloadService extends IntentService {
     private String latitude;
 
     private DatabaseReference dataref;
+    private Bitmap bmap;
+
+    private Intent done;
 
     @Override
     protected void onHandleIntent(Intent intent) {
@@ -94,6 +98,10 @@ public class DownloadService extends IntentService {
                             Log.e("HTF", files);
                             String name;
                             int i = 0;
+
+                            Gallery.fileNames.clear();
+                            Gallery.imageGallery.clear();
+
                             Gallery.fileNames = new ArrayList<>();
                             Gallery.imageGallery = new ArrayList<>();
 
@@ -111,6 +119,8 @@ public class DownloadService extends IntentService {
                             if(Gallery.fileNames.size() > 0)
                                 downLoadFiles();
                         }
+
+                        dataref.removeEventListener(this);
                     }
 
                     @Override
@@ -118,32 +128,6 @@ public class DownloadService extends IntentService {
 
                     }
                 });
-
-
-//                if(files == null || files.length() == 0){
-//                    Intent done = new Intent();
-//                    done.setAction("download");
-//                    sendBroadcast(done);
-//                }else {
-//
-//                    String name;
-//                    int i = 0;
-//                    Gallery.fileNames = new ArrayList<>();
-//                    Gallery.imageGallery = new ArrayList<>();
-//
-//                    for (int j = 1; j <= files.length(); j++) {
-//                        if (j == files.length() || files.charAt(j) == ',') {
-//                            name = files.substring(i, j);
-//
-//                            Gallery.fileNames.add(name);
-//
-//                            Log.d("Set Names", name);
-//                            i = j + 1;
-//                        }
-//                    }
-//
-//                    downLoadFiles();
-//                }
             }else if(action.equals("upload")){
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
@@ -156,8 +140,10 @@ public class DownloadService extends IntentService {
 
                 Uri imageTaken = Uri.fromFile(new File(mCameraFileName));
 
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = 8;
 
-                Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName), 90));
+                Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName, options), 90));
 
                 String email = mAuth.getCurrentUser().getEmail();
 
@@ -179,6 +165,9 @@ public class DownloadService extends IntentService {
 
                                 dataref.setValue(files);
 
+                                Intent done = new Intent();
+                                done.setAction("upload");
+                                sendBroadcast(done);
                                 Toast.makeText(getApplicationContext(), "Uploaded Image!", Toast.LENGTH_SHORT).show();
                             }
                         })
@@ -198,18 +187,20 @@ public class DownloadService extends IntentService {
         File file = new File("/sdcard/" + Gallery.fileNames.get(index));
         if(file.exists()){
             index++;
-            Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90));
+            bmap = Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90);
+            bmap = Bitmap.createScaledBitmap(bmap, bmap.getWidth() / 2, bmap.getHeight() / 2, false);
+
+            Gallery.imageGallery.add(bmap);
             Log.d("File", "Exit");
 
-            if(Gallery.imageGallery.size() != Gallery.fileNames.size()) {
+            if(Gallery.fileNames.size() > 0 && index < Gallery.fileNames.size() && Gallery.imageGallery.size() < Gallery.fileNames.size()) {
                 downLoadFiles();
+            }else{
+                // Finish downloading all images
+                done = new Intent();
+                done.setAction("download");
+                sendBroadcast(done);
             }
-
-            // Finish downloading all images
-            Intent done = new Intent();
-            done.setAction("download");
-            sendBroadcast(done);
-
             return;
         }
 
