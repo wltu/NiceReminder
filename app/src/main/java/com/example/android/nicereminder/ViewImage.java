@@ -2,20 +2,14 @@ package com.example.android.nicereminder;
 
 import android.content.Context;
 import android.content.pm.ActivityInfo;
-import android.content.res.Resources;
-import android.net.Uri;
-import android.support.v4.view.MotionEventCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
-
-import java.io.File;
 
 
 public class ViewImage extends AppCompatActivity {
@@ -52,6 +46,8 @@ public class ViewImage extends AppCompatActivity {
         return swipe.onTouch(image, event);
     }
 
+
+    // Motion Detector for swiping images.
     private class OnSwipeTouchListener implements View.OnTouchListener {
 
         private final GestureDetector gestureDetector;
@@ -127,6 +123,4 @@ public class ViewImage extends AppCompatActivity {
         public void onSwipeBottom() {
         }
     }
-
-
 }

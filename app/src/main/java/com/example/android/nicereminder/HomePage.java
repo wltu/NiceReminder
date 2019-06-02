@@ -16,6 +16,4 @@ public class HomePage extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable final ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.activity_home, container, false);
     }
-
-
 }

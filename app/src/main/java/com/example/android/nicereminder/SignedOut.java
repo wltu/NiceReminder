@@ -1,12 +1,9 @@
 package com.example.android.nicereminder;
 
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
-
-
 
 public class SignedOut extends PreferenceFragment {
 

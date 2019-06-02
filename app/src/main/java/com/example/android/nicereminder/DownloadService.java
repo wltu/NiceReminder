@@ -2,7 +2,6 @@ package com.example.android.nicereminder;
 
 import android.app.IntentService;
 import android.content.Intent;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -65,12 +64,6 @@ public class DownloadService extends IntentService {
 
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
-
-                //files = intent.getStringExtra("files");
-
-                Log.e("WTF0", MainScreen.getLatitude());
-                Log.e("WTF1", MainScreen.getLongitude());
-
                 latitude = MainScreen.getLatitude();
                 longitude = MainScreen.getLongitude();
 
@@ -95,7 +88,6 @@ public class DownloadService extends IntentService {
 
                             files = dataSnapshot.getValue(String.class);
 
-                            Log.e("HTF", files);
                             String name;
                             int i = 0;
 
@@ -148,9 +140,6 @@ public class DownloadService extends IntentService {
                 String email = mAuth.getCurrentUser().getEmail();
 
                 StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + latitude + "/" + longitude + "/" + newPicFile);
-
-                Log.d("Full Name", mCameraFileName);
-                Log.d("Name",newPicFile);
 
                 dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery").child(latitude).child(longitude);
                 storageref.putFile(imageTaken)
@@ -209,13 +198,8 @@ public class DownloadService extends IntentService {
         try {
             mref = mStorageRef.child("User/" + mAuth.getCurrentUser().getEmail() + "/gallery/" + latitude + "/" + longitude + "/" + Gallery.fileNames.get(index));
 
-            Log.d("Size", Gallery.fileNames.size() + "");
-            Log.d("Size?", Gallery.imageGallery.size() + "");
-            Log.d("Name", Gallery.fileNames.get(index));
-
             int i = Gallery.fileNames.get(index).indexOf('.');
 
-            Log.d("File", Gallery.fileNames.get(index).substring(0,i));
             image = File.createTempFile(Gallery.fileNames.get(index).substring(0,i), Gallery.fileNames.get(index).substring(i));
             mref.getFile(image)
                     .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {

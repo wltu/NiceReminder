@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
-import android.support.annotation.Nullable;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 

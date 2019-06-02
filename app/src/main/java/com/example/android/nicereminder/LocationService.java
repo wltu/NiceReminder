@@ -17,7 +17,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -35,6 +34,11 @@ public class LocationService extends Service {
     private double longitude;
     private boolean newLocation;
 
+
+    /*
+    Each grid is 0.0002 by 0.0002 degree... Within the grid there is 0.0001 margin on each side before changing grid.
+    Each grid is defined by its bottom left corner.
+    */
     public static final double FAR_DISTANCE = 0.0003;  // Change Margin...
     public static final double NEAR_DISTANCE = 0.0001;  // Change Margin...
 
