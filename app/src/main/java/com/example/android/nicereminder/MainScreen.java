@@ -91,7 +91,6 @@ public class MainScreen extends AppCompatActivity
     private static String files = null;
 
     private static FragmentManager fragmentManager;
-    private static int fragmentID;
     private static Context context;
     private Activity activity = this;
     private LocationManager locationManager;
@@ -182,8 +181,6 @@ public class MainScreen extends AppCompatActivity
                                 Gallery fragmet = new Gallery();
                                 fragmet.setArguments(bundle);
                                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
-
-                                fragmentID = 0;
                             } catch (IllegalStateException e) {
                                 delete_setting.setVisible(false);
 
@@ -245,8 +242,6 @@ public class MainScreen extends AppCompatActivity
                             fragmet.setArguments(bundle);
 
                             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
-
-                            fragmentID = 0;
                         }
 
 
@@ -340,15 +335,6 @@ public class MainScreen extends AppCompatActivity
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
 
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                if (firebaseAuth.getCurrentUser() != null) {
-                    Toast.makeText(context, "Password Changed!", Toast.LENGTH_SHORT).show();
-                }
-            }
-        };
-
         database = FirebaseDatabase.getInstance();
 
         mStorageRef = FirebaseStorage.getInstance().getReference();
@@ -398,39 +384,6 @@ public class MainScreen extends AppCompatActivity
         }
 
         IsPermissionGranted();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        Log.d("Resume", "OK");
-
-        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-
-        fragmentID = sharedPreferences.getInt(FRAGMENT_STATE, -1);
-
-        if(fragmentID != -1) {
-            switch(fragmentID){
-                case 0:
-                    Bundle bundle = new Bundle();
-                    bundle.putString("files", files);
-                    Gallery fragmet = new Gallery();
-                    fragmet.setArguments(bundle);
-
-                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
-                    break;
-                case 1:
-                    getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
-                    break;
-                case 2:
-                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
-                    break;
-                case 3:
-                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
-                    break;
-                default:
-            }
-        }
     }
 
     @Override
@@ -582,8 +535,6 @@ public class MainScreen extends AppCompatActivity
 
                         fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
 
-                        fragmentID = 0;
-
                         delete_setting.setTitle(R.string.action_delete);
                         delete_setting_button.setVisible(false);
                     }
@@ -611,8 +562,6 @@ public class MainScreen extends AppCompatActivity
                     navigationView.setCheckedItem(R.id.nav_manage);
                     //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
                     getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
-
-                    fragmentID = 1;
                 }
 
                 return true;
@@ -673,8 +622,6 @@ public class MainScreen extends AppCompatActivity
                 fragmet.setArguments(bundle);
 
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
-
-                fragmentID = 0;
             }
         } else if (id == R.id.nav_slideshow) {
 
@@ -682,8 +629,6 @@ public class MainScreen extends AppCompatActivity
             setDeleteOption();
             if(mAuth.getCurrentUser() != null){
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
-
-                fragmentID = 1;
             }
         } else if (id == R.id.nav_signin) {
             intent = new Intent(MainScreen.this, LoginActivity.class);
@@ -726,19 +671,12 @@ public class MainScreen extends AppCompatActivity
     @Override
     protected void onPause() {
         super.onPause();
-        Log.d("Pause", "NN");
-        ExitApp();
 
         unregisterReceiver(backgroundTask);
         unregisterReceiver(uploadTask);
         unregisterReceiver(locationTask);
     }
 
-    private void ExitApp() {
-        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putInt(FRAGMENT_STATE, fragmentID);
-    }
 
     @Override
     protected void onDestroy() {
@@ -749,9 +687,11 @@ public class MainScreen extends AppCompatActivity
         Log.d("Store", "" + longitude);
         editor.putString(LATITUDE, "" + latitude);
         editor.putString(LONGITUDE, "" + longitude);
-        editor.putInt(FRAGMENT_STATE, -1);
 
         editor.commit();
+
+
+        profileFile = null;
 
         super.onDestroy();
     }
@@ -784,10 +724,12 @@ public class MainScreen extends AppCompatActivity
                     String email = mAuth.getCurrentUser().getEmail();
                     StorageReference storageref = mStorageRef.child("User/" + email + "/profile.jpg");
 
+                    profileFile = new File(image.getPath());
                     storageref.putFile(image)
                             .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                                 @Override
                                 public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+
                                     Toast.makeText(context, "Changed Profile!", Toast.LENGTH_SHORT).show();
                                 }
                             })
@@ -832,8 +774,6 @@ public class MainScreen extends AppCompatActivity
 
         if(signined){
             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
-
-            fragmentID = 2;
 
             String email = mAuth.getCurrentUser().getEmail();
             user_email.setText(email);
@@ -913,8 +853,6 @@ public class MainScreen extends AppCompatActivity
         }else{
             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
 
-            fragmentID = 3;
-
             user_image.setImageResource(R.mipmap.ic_launcher_round);
             user_name.setText(R.string.nav_header_title);
             user_email.setText(R.string.nav_header_subtitle);
@@ -943,10 +881,6 @@ public class MainScreen extends AppCompatActivity
         UpdateAccountStatus(false);
 
         Toast.makeText(context, "Signed Out", Toast.LENGTH_SHORT).show();
-    }
-
-    public static void changePassword(String password){
-        mAuth.getCurrentUser().updatePassword(password);
     }
 
     public static void deleteAccount(){
