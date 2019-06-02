@@ -72,6 +72,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Calendar;
+import java.util.HashMap;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -81,6 +82,7 @@ public class MainScreen extends AppCompatActivity
 
     private String TAG = "Permission";
 
+
     private Bitmap image;
     private Uri imageTaken;
     private String mCameraFileName;
@@ -89,6 +91,7 @@ public class MainScreen extends AppCompatActivity
     private static String files = null;
 
     private static FragmentManager fragmentManager;
+    private static int fragmentID;
     private static Context context;
     private Activity activity = this;
     private LocationManager locationManager;
@@ -99,6 +102,8 @@ public class MainScreen extends AppCompatActivity
     public static final String SHARDED_PREFS = "sharedPref";
     public static final String LATITUDE = "latitude";
     public static final String LONGITUDE = "longitude";
+    private static final String FRAGMENT_STATE = "fragment";
+
     public static final double FAR_DISTANCE = 0.0003;  // Change Margin...
     public static final double NEAR_DISTANCE = 0.0001;  // Change Margin...
     /*
@@ -176,6 +181,8 @@ public class MainScreen extends AppCompatActivity
                                 Gallery fragmet = new Gallery();
                                 fragmet.setArguments(bundle);
                                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                                fragmentID = 0;
                             } catch (IllegalStateException e) {
                                 delete_setting.setVisible(false);
 
@@ -226,6 +233,22 @@ public class MainScreen extends AppCompatActivity
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.getValue() == null) {
                         dataref.setValue("");
+                        files = "";
+                        Gallery.fileNames.clear();
+                        Gallery.imageGallery.clear();
+
+                        if(inGallery){
+                            Bundle bundle = new Bundle();
+                            bundle.putString("files", files);
+                            Gallery fragmet = new Gallery();
+                            fragmet.setArguments(bundle);
+
+                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                            fragmentID = 0;
+                        }
+
+
                         newLocation = false;
                     } else {
                         if(newLocation && (files == null || !files.equals(dataSnapshot.getValue(String.class)))) {
@@ -279,6 +302,7 @@ public class MainScreen extends AppCompatActivity
             public void onClick(View view) {
                 if(mAuth.getCurrentUser() != null) {
                     fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new Camera()).commit();
+
                     takePicture();
                 }
             }
@@ -367,10 +391,43 @@ public class MainScreen extends AppCompatActivity
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("Resume", "OK");
+
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+
+        fragmentID = sharedPreferences.getInt(FRAGMENT_STATE, -1);
+
+        if(fragmentID != -1) {
+            switch(fragmentID){
+                case 0:
+                    Bundle bundle = new Bundle();
+                    bundle.putString("files", files);
+                    Gallery fragmet = new Gallery();
+                    fragmet.setArguments(bundle);
+
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                    break;
+                case 1:
+                    getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+                    break;
+                case 2:
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
+                    break;
+                case 3:
+                    fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
+                    break;
+                default:
+            }
+        }
+    }
+
+    @Override
     protected void onStart() {
         super.onStart();
 
-        sendNotification();
+//        sendNotification();
         // Register the listener with the Location Manager to receive location updates
 
         if(mAuth.getCurrentUser() != null){
@@ -513,6 +570,8 @@ public class MainScreen extends AppCompatActivity
 
                         fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
 
+                        fragmentID = 0;
+
                         delete_setting.setTitle(R.string.action_delete);
                         delete_setting_button.setVisible(false);
                     }
@@ -540,6 +599,8 @@ public class MainScreen extends AppCompatActivity
                     navigationView.setCheckedItem(R.id.nav_manage);
                     //getSupportFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
                     getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+
+                    fragmentID = 1;
                 }
 
                 return true;
@@ -600,6 +661,8 @@ public class MainScreen extends AppCompatActivity
                 fragmet.setArguments(bundle);
 
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+
+                fragmentID = 0;
             }
         } else if (id == R.id.nav_slideshow) {
 
@@ -607,6 +670,8 @@ public class MainScreen extends AppCompatActivity
             setDeleteOption();
             if(mAuth.getCurrentUser() != null){
                 getFragmentManager().beginTransaction().replace(R.id.activity_mainscreen, new Settings()).commit();
+
+                fragmentID = 1;
             }
         } else if (id == R.id.nav_signin) {
             intent = new Intent(MainScreen.this, LoginActivity.class);
@@ -650,6 +715,10 @@ public class MainScreen extends AppCompatActivity
     protected void onPause() {
         super.onPause();
 
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARDED_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(FRAGMENT_STATE, fragmentID);
+
         unregisterReceiver(backgroundTask);
         unregisterReceiver(uploadTask);
         unregisterReceiver(locationTask);
@@ -664,6 +733,7 @@ public class MainScreen extends AppCompatActivity
         Log.d("Store", "" + longitude);
         editor.putString(LATITUDE, "" + latitude);
         editor.putString(LONGITUDE, "" + longitude);
+        editor.putInt(FRAGMENT_STATE, -1);
 
         editor.commit();
 
@@ -746,6 +816,9 @@ public class MainScreen extends AppCompatActivity
 
         if(signined){
             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
+
+            fragmentID = 2;
+
             String email = mAuth.getCurrentUser().getEmail();
             user_email.setText(email);
 
@@ -823,6 +896,8 @@ public class MainScreen extends AppCompatActivity
             }
         }else{
             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new SignedOut()).commit();
+
+            fragmentID = 3;
 
             user_image.setImageResource(R.mipmap.ic_launcher_round);
             user_name.setText(R.string.nav_header_title);

@@ -69,51 +69,51 @@ public class LocationService extends Service {
             @Override
             public void onLocationChanged(Location location) {
                 Log.e("Change", "Location");
-//                double lat = location.getLatitude();
-//                double lon = location.getLongitude();
-//
-//                if((latitude != -1 && longitude != -1)){
-//                    if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
-//
-//                        int a = (int)(lat * 10000);
-//                        int b = (int)(lon * 10000);
-//                        latitude = (a - Math.abs(a % 2)) / 10000.0;
-//                        longitude = (b - Math.abs(b % 2)) / 10000.0;
-//
-//                        mAuth = FirebaseAuth.getInstance();
-//                        database = FirebaseDatabase.getInstance();
-//
-//                        if(mAuth.getCurrentUser() != null) {
-//                            dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
-//                                    .child("gallery").child(("" + latitude).replace('.', ' '))
-//                                    .child(("" + longitude).replace('.', ' '));
-//                            dataref.addValueEventListener(new ValueEventListener() {
-//                                @Override
-//                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-//                                    if (dataSnapshot.getValue() == null) {
-//                                        dataref.setValue("");
-//                                    } else {
-//                                        if (dataSnapshot.getValue(String.class).length() > 0)
-//                                            sendNotification();
-//                                    }
-//                                }
-//
-//                                @Override
-//                                public void onCancelled(@NonNull DatabaseError databaseError) {
-//
-//                                }
-//                            });
-//                        }
-//                    }
-//                }else if(latitude == -1 && longitude == -1){
-//                    int a = (int)(lat * 10000);
-//                    int b = (int)(lon * 10000);
-//                    latitude = (a - Math.abs(a % 2)) / 10000.0;
-//                    longitude = (b - Math.abs(b % 2)) / 10000.0;
-//                }
+                double lat = location.getLatitude();
+                double lon = location.getLongitude();
 
-                latitude = 34.4182;
-                longitude = -119.8632;
+                if((latitude != -1 && longitude != -1)){
+                    if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
+
+                        int a = (int)(lat * 10000);
+                        int b = (int)(lon * 10000);
+                        latitude = (a - Math.abs(a % 2)) / 10000.0;
+                        longitude = (b - Math.abs(b % 2)) / 10000.0;
+
+                        mAuth = FirebaseAuth.getInstance();
+                        database = FirebaseDatabase.getInstance();
+
+                        if(mAuth.getCurrentUser() != null) {
+                            dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
+                                    .child("gallery").child(("" + latitude).replace('.', ' '))
+                                    .child(("" + longitude).replace('.', ' '));
+                            dataref.addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                    if (dataSnapshot.getValue() == null) {
+                                        dataref.setValue("");
+                                    } else {
+                                        if (dataSnapshot.getValue(String.class).length() > 0)
+                                            sendNotification();
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                                }
+                            });
+                        }
+                    }
+                }else if(latitude == -1 && longitude == -1){
+                    int a = (int)(lat * 10000);
+                    int b = (int)(lon * 10000);
+                    latitude = (a - Math.abs(a % 2)) / 10000.0;
+                    longitude = (b - Math.abs(b % 2)) / 10000.0;
+                }
+
+//                latitude = 34.4182;
+//                longitude = -119.8632;
                 Intent i = new Intent("location_update");
                 i.putExtra("longitude", "" + longitude);
                 i.putExtra("latitude", "" + latitude);
