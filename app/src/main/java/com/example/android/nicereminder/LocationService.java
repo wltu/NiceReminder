@@ -104,6 +104,7 @@ public class LocationService extends Service {
                                         if (dataSnapshot.getValue(String.class).length() > 0)
                                             sendNotification();
                                     }
+                                    dataref.removeEventListener(this);
                                 }
 
                                 @Override

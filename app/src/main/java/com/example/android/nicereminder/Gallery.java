@@ -10,7 +10,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import android.util.Log;
+
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -33,13 +33,14 @@ public class Gallery extends Fragment {
 
     // Gallery is in delete option.
     public static boolean delete;
+    public static int delete_count = 0;
     private static Context context;
 
 
     // Image Gallery ArrayList
-    public static ArrayList<Bitmap> imageGallery = new ArrayList<>();;
-    public static ArrayList<Boolean> selectImage = new ArrayList<>();;
-    public static ArrayList<String> fileNames = new ArrayList<>();;
+    public static ArrayList<Bitmap> imageGallery = new ArrayList<>();
+    public static ArrayList<Boolean> selectImage = new ArrayList<>();
+    public static ArrayList<String> fileNames = new ArrayList<>();
 
 
     private static boolean landscape;
@@ -63,6 +64,7 @@ public class Gallery extends Fragment {
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
+        delete_count = 0;
         view = getView();
         files = getArguments().getString("files");
         delete = false;
@@ -101,14 +103,21 @@ public class Gallery extends Fragment {
         int i = 0;
 
         // Get file names
-         for (int j = 1; j <= files.length(); j++) {
-            if (j == files.length() || files.charAt(j) == ',') {
-                name = files.substring(i, j);
+        if(files != null){
+            for (int j = 1; j <= files.length(); j++) {
+                if(j == files.length()){
+                    name = files.substring(i);
 
-                fileNames.add(name);
-                i = j + 1;
+                    fileNames.add(name);
+                }else if (files.charAt(j) == ',') {
+                    name = files.substring(i, j);
+
+                    fileNames.add(name);
+                    i = j + 1;
+                }
             }
-         }
+        }
+
 
          // Set up gallery images.
          if(imageGallery.size() > 0){
@@ -162,9 +171,11 @@ public class Gallery extends Fragment {
                         if(v.getForeground() == null){
                             v.setForeground(getResources().getDrawable(R.drawable.border));
                             selectImage.set(map.get(v), true);
+                            delete_count++;
                         }else{
                             v.setForeground(null);
                             selectImage.set(map.get(v), false);
+                            delete_count--;
                         }
                     }else {
                         Intent intent = new Intent(getActivity(), ViewImage.class);
@@ -206,6 +217,7 @@ public class Gallery extends Fragment {
         String email = mAuth.getCurrentUser().getEmail();
         files = "";
 
+        delete_count = 0;
         for(int i = 0; i < fileNames.size(); i++){
             if(selectImage.get(i)){
                 // Delete image from cloud.

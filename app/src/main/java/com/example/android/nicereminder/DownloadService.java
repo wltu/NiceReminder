@@ -89,12 +89,12 @@ public class DownloadService extends IntentService {
                             Gallery.fileNames.clear();
                             Gallery.imageGallery.clear();
 
-//                            Gallery.fileNames = new ArrayList<>();
-//                            Gallery.imageGallery = new ArrayList<>();
-
                             // Get File Names
                             for (int j = 1; j <= files.length(); j++) {
-                                if (j == files.length() || files.charAt(j) == ',') {
+                                if(j == files.length()){
+                                    name = files.substring(i);
+                                    Gallery.fileNames.add(name);
+                                }else if (files.charAt(j) == ',') {
                                     name = files.substring(i, j);
 
                                     Gallery.fileNames.add(name);

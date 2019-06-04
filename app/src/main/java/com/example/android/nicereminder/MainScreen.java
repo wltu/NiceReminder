@@ -330,41 +330,44 @@ public class MainScreen extends AppCompatActivity
             case R.id.action_delete_button:
                 delete_setting.setVisible(true);
 
-                AlertDialog.Builder alert = new AlertDialog.Builder(this);
+                if(Gallery.delete_count > 0){
+                    AlertDialog.Builder alert = new AlertDialog.Builder(this);
 
-                alert.setTitle("Delete Images?");
-                alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                    }
-                });
+                    alert.setTitle("Delete Images?");
+                    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int whichButton) {
+                        }
+                    });
 
-                alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        files = Gallery.DeleteSelected();
-                        dataref.setValue(files);
+                    alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int whichButton) {
+                            files = Gallery.DeleteSelected();
+                            dataref.setValue(files);
 
-                        delete_setting.setVisible(true);
+                            delete_setting.setVisible(true);
 
-                        Bundle bundle = new Bundle();
-                        bundle.putString("files", files);
-                        Gallery fragmet = new Gallery();
-                        fragmet.setArguments(bundle);
+                            Bundle bundle = new Bundle();
+                            bundle.putString("files", files);
+                            Gallery fragmet = new Gallery();
+                            fragmet.setArguments(bundle);
 
-                        fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
 
-                        delete_setting.setTitle(R.string.action_delete);
-                        delete_setting_button.setVisible(false);
-                    }
-                });
+                            delete_setting.setTitle(R.string.action_delete);
+                            delete_setting_button.setVisible(false);
+                        }
+                    });
 
-                alert.show();
+                    alert.show();
+                }
+
                 return true;
             case R.id.action_delete:
                 delete_setting.setVisible(true);
 
                 if(Gallery.delete){
                     setDeleteOption();
-                }else{
+                }else if(Gallery.imageGallery.size() > 0){
                     delete_setting.setTitle(R.string.action_delete_cancel);
                     delete_setting_button.setVisible(true);
                     Gallery.delete = true;
@@ -509,7 +512,12 @@ public class MainScreen extends AppCompatActivity
             uploadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
             uploadIntent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
-            stopService(downloadIntent);
+
+            try {
+                stopService(downloadIntent);
+            } catch(NullPointerException e) {
+                e.printStackTrace();
+            }
             startService(uploadIntent);
         }
         // Get Change Profile Picture Result
