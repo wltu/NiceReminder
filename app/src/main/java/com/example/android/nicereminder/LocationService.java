@@ -19,7 +19,6 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
-import android.util.Log;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -35,9 +34,10 @@ public class LocationService extends Service {
     private boolean newLocation;
 
 
-    /*
-    Each grid is 0.0002 by 0.0002 degree... Within the grid there is 0.0001 margin on each side before changing grid.
-    Each grid is defined by its bottom left corner.
+    /**
+        Each grid is 0.0002 by 0.0002 degree... Within the grid there is 0.0001 margin on each side before changing grid.
+        Each grid is defined by its bottom left corner.
+        This is for testing purpose only. Larger grid is more practical.
     */
     public static final double FAR_DISTANCE = 0.0003;  // Change Margin...
     public static final double NEAR_DISTANCE = 0.0001;  // Change Margin...
@@ -60,6 +60,7 @@ public class LocationService extends Service {
     }
 
 
+    // Force Service to run forever in the background.
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         onTaskRemoved(intent);
@@ -69,14 +70,15 @@ public class LocationService extends Service {
     @Override
     public void onCreate() {
 
+        // Location Listener
         listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                Log.e("Change", "Location");
                 double lat = location.getLatitude();
                 double lon = location.getLongitude();
 
                 if((latitude != -1 && longitude != -1)){
+                    // Check if new location is over the given margin.
                     if(((latitude - lat > NEAR_DISTANCE) || ((longitude - lon) > NEAR_DISTANCE)) || (lat - latitude > FAR_DISTANCE) || ((lon - longitude) > FAR_DISTANCE)){
 
                         int a = (int)(lat * 10000);
@@ -88,6 +90,8 @@ public class LocationService extends Service {
                         database = FirebaseDatabase.getInstance();
 
                         if(mAuth.getCurrentUser() != null) {
+                            // Get new current location gallery
+
                             dataref = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' '))
                                     .child("gallery").child(("" + latitude).replace('.', ' '))
                                     .child(("" + longitude).replace('.', ' '));
@@ -103,9 +107,7 @@ public class LocationService extends Service {
                                 }
 
                                 @Override
-                                public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                                }
+                                public void onCancelled(@NonNull DatabaseError databaseError) {}
                             });
                         }
                     }
@@ -116,8 +118,7 @@ public class LocationService extends Service {
                     longitude = (b - Math.abs(b % 2)) / 10000.0;
                 }
 
-//                latitude = 34.4182;
-//                longitude = -119.8632;
+                // Arrived in a new location.
                 Intent i = new Intent("location_update");
                 i.putExtra("longitude", "" + longitude);
                 i.putExtra("latitude", "" + latitude);
@@ -125,14 +126,10 @@ public class LocationService extends Service {
             }
 
             @Override
-            public void onStatusChanged(String s, int i, Bundle bundle) {
-
-            }
+            public void onStatusChanged(String s, int i, Bundle bundle) {}
 
             @Override
-            public void onProviderEnabled(String s) {
-
-            }
+            public void onProviderEnabled(String s) {}
 
             @Override
             public void onProviderDisabled(String s) {
@@ -160,6 +157,7 @@ public class LocationService extends Service {
         }
     }
 
+    // Force Restart Service
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         Intent restart = new Intent(getApplicationContext(), this.getClass());
@@ -174,6 +172,7 @@ public class LocationService extends Service {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
+    // Send Reminder Notification
     private void sendNotification() {
         String CHANNEL_ID = "CHANNEL";
         CharSequence name = "NICE CHANNEL";
@@ -209,6 +208,7 @@ public class LocationService extends Service {
                 | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
 
+        // Bind activity intent to notification.
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
 

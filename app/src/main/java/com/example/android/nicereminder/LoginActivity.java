@@ -3,8 +3,10 @@ package com.example.android.nicereminder;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
@@ -23,6 +25,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -56,11 +59,13 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private View mProgressView;
     private View mLoginFormView;
 
-
+    // Firebase Variables
     private FirebaseAuth.AuthStateListener mAuthListener;
     private FirebaseAuth mAuth;
 
+    // Image File Names
     private String files;
+
 
     private Intent intent;
 
@@ -72,7 +77,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         setContentView(R.layout.activity_login);
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-
         mAuth = FirebaseAuth.getInstance();
 
         // Set up the login form.
@@ -102,13 +106,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-            FirebaseUser user = firebaseAuth.getCurrentUser();
+                FirebaseUser user = firebaseAuth.getCurrentUser();
 
-            if(user != null){
-                finish();
-            }
+                if(user != null){
+                    finish();
+                }
             }
         };
+
 
         mNameView = (EditText) findViewById(R.id.name);
 
@@ -117,7 +122,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-
+                hideKeyboard();
                 if(getIntent().getBooleanExtra("Signup", false)){
                     attemptSignup();
                 }else{
@@ -134,6 +139,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
+                hideKeyboard();
                 attemptLogin();
             }
         });
@@ -142,7 +148,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mEmailSignUpButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-
+                hideKeyboard();
                 attemptSignup();
             }
         });
@@ -166,7 +172,19 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
     }
 
-    // Sign Up New User
+    private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    /**
+     * Attempts to register the account specified by the login form.
+     * If there are form errors (invalid email, missing fields, etc.), the
+     * errors are presented and no actual login attempt is made.
+     */
     private void attemptSignup() {
 
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
@@ -222,9 +240,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             myRef.setValue(mNameView.getText().toString());
 
 
-                            intent = new Intent(LoginActivity.this, MainScreen.class);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                            startActivity(intent);
+                            MainScreen.Login();
+                            MainScreen.UpdateAccountStatus(true);
                         } else {
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
                                     Toast.LENGTH_SHORT).show();
@@ -238,7 +255,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     }
 
     /**
-     * Attempts to sign in or register the account specified by the login form.
+     * Attempts to sign in by the login form.
      * If there are form errors (invalid email, missing fields, etc.), the
      * errors are presented and no actual login attempt is made.
      */
@@ -308,9 +325,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                 dataref.addValueEventListener(new ValueEventListener() {
                                     @Override
                                     public void onDataChange(DataSnapshot dataSnapshot) {
-                                        // This method is called once with the initial value and again
-                                        // whenever data at this location is updated.
-
                                         if(dataSnapshot != null) {
                                             if (files == null) {
                                                 Intent intent = new Intent(getApplicationContext(), DownloadService.class);
@@ -324,14 +338,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                     }
 
                                     @Override
-                                    public void onCancelled(DatabaseError error) {
-
-                                    }
+                                    public void onCancelled(DatabaseError error) {}
                                 });
 
-                                intent = new Intent(LoginActivity.this, MainScreen.class);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                startActivity(intent);
+                                MainScreen.Login();
+                                MainScreen.UpdateAccountStatus(true);
                             }
                         }
                     });

@@ -77,13 +77,11 @@ public class ViewImage extends AppCompatActivity implements SensorListener {
         return swipe.onTouch(image, event);
     }
 
-    // Sensor Events
+    // Shake Sensor Events
     @Override
     public void onSensorChanged(int sensor, float[] values) {
         if (sensor == SensorManager.SENSOR_ACCELEROMETER) {
             long curTime = System.currentTimeMillis();
-            // only allow one update every 100ms.
-
 
             long diffTime = (curTime - lastUpdate);
 
@@ -138,21 +136,15 @@ public class ViewImage extends AppCompatActivity implements SensorListener {
                         }
                     }
                 }
-
-
                 last_x = x;
                 last_y = y;
                 last_z = z;
             }
-
-
         }
     }
 
     @Override
-    public void onAccuracyChanged(int sensor, int accuracy) {
-
-    }
+    public void onAccuracyChanged(int sensor, int accuracy) {}
 
     @Override
     protected void onDestroy() {
@@ -160,9 +152,8 @@ public class ViewImage extends AppCompatActivity implements SensorListener {
         sensorMgr.unregisterListener(this);
     }
 
-    // Motion Detector for swiping images.
+    // Motion Detector for finger swiping images.
     private class OnSwipeTouchListener implements View.OnTouchListener {
-
         private final GestureDetector gestureDetector;
 
         public OnSwipeTouchListener (Context ctx){
@@ -229,10 +220,9 @@ public class ViewImage extends AppCompatActivity implements SensorListener {
                 image.setImageBitmap(Gallery.imageGallery.get(index));
             }
         }
-        public void onSwipeTop() {
-        }
 
-        public void onSwipeBottom() {
-        }
+        public void onSwipeTop() {}
+
+        public void onSwipeBottom() {}
     }
 }

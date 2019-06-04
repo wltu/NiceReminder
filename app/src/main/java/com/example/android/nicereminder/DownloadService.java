@@ -26,27 +26,23 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-/**
- * An {@link IntentService} subclass for handling asynchronous task requests in
- * a service on a separate handler thread.
- * <p>
- * TODO: Customize class - update intent actions, extra parameters and static
- * helper methods.
- */
 public class DownloadService extends IntentService {
     public DownloadService() {
         super("DownloadService");
     }
 
+    // Firebase Variables
     private static FirebaseAuth mAuth;
     private StorageReference mStorageRef;
-    private static StorageReference storageref;
-    private File image;
 
+    // Image Variables
+    private File image;
     private int index ;
     private String files;
     private  String newPicFile;
     private String mCameraFileName;
+
+    // Location
     private String longitude;
     private String latitude;
 
@@ -59,9 +55,12 @@ public class DownloadService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         if (intent != null) {
             final String action = intent.getAction();
+
+            // Download Background Task.
             if (action.equals("download")) {
                 index = 0;
 
+                // Set Variables
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
                 latitude = MainScreen.getLatitude();
@@ -79,31 +78,26 @@ public class DownloadService extends IntentService {
                         if(dataSnapshot.getValue() == null){
                             dataref.setValue("");
 
-                            Intent done = new Intent();
-                            done.setAction("download");
-                            sendBroadcast(done);
+                            done("download");
                         }else{
-                            // This method is called once with the initial value and again
-                            // whenever data at this location is updated.
-
                             files = dataSnapshot.getValue(String.class);
 
                             String name;
                             int i = 0;
 
+                            // Clear ArrayList
                             Gallery.fileNames.clear();
                             Gallery.imageGallery.clear();
 
-                            Gallery.fileNames = new ArrayList<>();
-                            Gallery.imageGallery = new ArrayList<>();
+//                            Gallery.fileNames = new ArrayList<>();
+//                            Gallery.imageGallery = new ArrayList<>();
 
+                            // Get File Names
                             for (int j = 1; j <= files.length(); j++) {
                                 if (j == files.length() || files.charAt(j) == ',') {
                                     name = files.substring(i, j);
 
                                     Gallery.fileNames.add(name);
-
-                                    Log.d("Set Names", name);
                                     i = j + 1;
                                 }
                             }
@@ -116,11 +110,11 @@ public class DownloadService extends IntentService {
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError error) {
-
-                    }
+                    public void onCancelled(DatabaseError error) {}
                 });
-            }else if(action.equals("upload")){
+            }
+            // Upload Background Task
+            else if(action.equals("upload")){
                 mAuth = FirebaseAuth.getInstance();
                 mStorageRef = FirebaseStorage.getInstance().getReference();
 
@@ -134,13 +128,13 @@ public class DownloadService extends IntentService {
 
                 BitmapFactory.Options options = new BitmapFactory.Options();
                 options.inSampleSize = 8;
-
                 Gallery.imageGallery.add(Gallery.RotateBitmap(BitmapFactory.decodeFile(mCameraFileName, options), 90));
 
                 String email = mAuth.getCurrentUser().getEmail();
 
                 StorageReference storageref = mStorageRef.child("User/" + email + "/gallery/" + latitude + "/" + longitude + "/" + newPicFile);
 
+                // Upload Image to cloud.
                 dataref = FirebaseDatabase.getInstance().getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("gallery").child(latitude).child(longitude);
                 storageref.putFile(imageTaken)
                         .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
@@ -154,45 +148,52 @@ public class DownloadService extends IntentService {
 
                                 dataref.setValue(files);
 
-                                Intent done = new Intent();
-                                done.setAction("upload");
-                                sendBroadcast(done);
+                                done("upload");
                                 Toast.makeText(getApplicationContext(), "Uploaded Image!", Toast.LENGTH_SHORT).show();
                             }
                         })
                         .addOnFailureListener(new OnFailureListener() {
                             @Override
                             public void onFailure(@NonNull Exception exception) {
-                                // Handle unsuccessful uploads
-                                // ...
+                                Toast.makeText(getApplicationContext(), "Error in uploading image!", Toast.LENGTH_SHORT).show();
                             }
                         });
             }
         }
     }
 
+    private void done(String action) {
+        Intent done = new Intent();
+        done.setAction(action);
+        sendBroadcast(done);
+    }
 
+
+    // Download all gallery images.
     private void downLoadFiles() {
         File file = new File("/sdcard/" + Gallery.fileNames.get(index));
+
+        // Image exist on current device.
         if(file.exists()){
             index++;
+
+            // Rescale Image to reduce memory.
             bmap = Gallery.RotateBitmap(BitmapFactory.decodeFile(file.getPath()), 90);
             bmap = Bitmap.createScaledBitmap(bmap, bmap.getWidth() / 2, bmap.getHeight() / 2, false);
 
             Gallery.imageGallery.add(bmap);
-            Log.d("File", "Exit");
 
             if(Gallery.fileNames.size() > 0 && index < Gallery.fileNames.size() && Gallery.imageGallery.size() < Gallery.fileNames.size()) {
                 downLoadFiles();
             }else{
                 // Finish downloading all images
-                done = new Intent();
-                done.setAction("download");
-                sendBroadcast(done);
+                done("download");
             }
             return;
         }
 
+
+        // Image doesn't exist on current device. Download from cloud.
         StorageReference mref;
 
         try {
@@ -211,9 +212,7 @@ public class DownloadService extends IntentService {
                                 downLoadFiles();
                             }else{
                                 // Finish downloading all images
-                                Intent done = new Intent();
-                                done.setAction("download");
-                                sendBroadcast(done);
+                                done("download");
                             }
                         }
                     }).addOnFailureListener(new OnFailureListener() {

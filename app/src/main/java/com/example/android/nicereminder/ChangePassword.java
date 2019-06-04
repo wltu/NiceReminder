@@ -4,7 +4,6 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
@@ -150,6 +149,7 @@ public class ChangePassword extends AppCompatActivity {
         return false;
     }
 
+    // Update password through Firebase
     private void changePassword(final String password, String oldpass){
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();
@@ -158,8 +158,6 @@ public class ChangePassword extends AppCompatActivity {
             user = FirebaseAuth.getInstance().getCurrentUser();
             final String email = user.getEmail();
 
-            Log.d("Email", email);
-            Log.d("old Password", oldpass);
             AuthCredential credential = EmailAuthProvider.getCredential(email, oldpass);
 
             user.reauthenticate(credential).addOnCompleteListener(new OnCompleteListener<Void>() {
