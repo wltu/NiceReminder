@@ -82,7 +82,6 @@ public class MainScreen extends AppCompatActivity
     private String currentLocation;
     private static double latitude = -1;
     private static double longitude  = -1;
-    private TextView locationTest;
 
     private Intent locationIntent = null;
     private Intent uploadIntent = null;
@@ -178,9 +177,6 @@ public class MainScreen extends AppCompatActivity
                         newLocation = true;
                         getLocationGallery();
                      }
-
-                    locationTest.setText(currentLocation + "\n" + latitude + ", " + longitude);
-
                 }
             }
         }
@@ -252,7 +248,6 @@ public class MainScreen extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        locationTest = findViewById(R.id.location);
         fragmentManager = getFragmentManager();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -487,8 +482,6 @@ public class MainScreen extends AppCompatActivity
 
                 fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
             }
-        } else if (id == R.id.nav_slideshow) {
-
         } else if (id == R.id.nav_manage) {
             setDeleteOption();
             if(mAuth.getCurrentUser() != null){
@@ -517,9 +510,24 @@ public class MainScreen extends AppCompatActivity
     protected void onPause() {
         super.onPause();
 
-        unregisterReceiver(backgroundTask);
-        unregisterReceiver(uploadTask);
-        unregisterReceiver(locationTask);
+        try {
+            unregisterReceiver(backgroundTask);
+        } catch(IllegalArgumentException e) {
+
+            e.printStackTrace();
+        }
+
+        try {
+            unregisterReceiver(uploadTask);
+        } catch(IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            unregisterReceiver(locationTask);
+        } catch(IllegalArgumentException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -621,8 +629,6 @@ public class MainScreen extends AppCompatActivity
             longitude = Double.parseDouble(getIntent().getStringExtra(LONGITUDE));
 
             restart = true;
-            locationTest.setText(latitude + ": " + longitude);
-            Log.d("Change Location", "2");
             newLocation = true;
             getLocationGallery();
         }else {
@@ -721,8 +727,6 @@ public class MainScreen extends AppCompatActivity
 
         latitude = Double.parseDouble(sharedPreferences.getString(LATITUDE, "-1"));
         longitude = Double.parseDouble(sharedPreferences.getString(LONGITUDE, "-1"));
-
-        locationTest.setText(sharedPreferences.getString(LATITUDE, "-1") + ", " + sharedPreferences.getString(LONGITUDE, "-1"));
 
         if(latitude != -1 && longitude != -1) {
             Log.d("Change Location", "3");

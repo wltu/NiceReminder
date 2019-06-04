@@ -2,9 +2,12 @@ package com.example.android.nicereminder;
 
 import android.content.Context;
 import android.content.pm.ActivityInfo;
+import android.hardware.SensorListener;
+import android.hardware.SensorManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -12,13 +15,24 @@ import android.view.Window;
 import android.widget.ImageView;
 
 
-public class ViewImage extends AppCompatActivity {
+public class ViewImage extends AppCompatActivity implements SensorListener {
+
+    private static final int SHAKE_THRESHOLD = 1000;
 
     private ImageView image;
     private int index;
     private int size;
 
     private OnSwipeTouchListener swipe;
+
+    private SensorManager sensorMgr;
+    private long lastUpdate, startTime;
+    private float x, y, z, last_x, last_y, last_z;
+    private int count;
+    private boolean shake;
+    private boolean shakeZ;
+    private boolean stall;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +53,23 @@ public class ViewImage extends AppCompatActivity {
         size = Gallery.imageGallery.size();
 
         swipe = new OnSwipeTouchListener(getApplication());
+
+        sensorMgr = (SensorManager) getSystemService(SENSOR_SERVICE);
+
+        lastUpdate = -1;
+        last_x = 0;
+        last_y = 0;
+        last_z = 0;
+
+
+        shake = false;
+        shakeZ = false;
+        stall = false;
+        count = 0;
+
+        sensorMgr.registerListener(this,
+                SensorManager.SENSOR_ACCELEROMETER,
+                SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
@@ -46,6 +77,88 @@ public class ViewImage extends AppCompatActivity {
         return swipe.onTouch(image, event);
     }
 
+    // Sensor Events
+    @Override
+    public void onSensorChanged(int sensor, float[] values) {
+        if (sensor == SensorManager.SENSOR_ACCELEROMETER) {
+            long curTime = System.currentTimeMillis();
+            // only allow one update every 100ms.
+
+
+            long diffTime = (curTime - lastUpdate);
+
+            if(stall && curTime - startTime > 500){
+                stall = false;
+            }
+
+            if (diffTime > 100) {
+                lastUpdate = curTime;
+
+                x = values[SensorManager.DATA_X];
+                y = values[SensorManager.DATA_Y];
+                z = values[SensorManager.DATA_Z];
+
+                float speed = Math.abs(x + y - last_x - last_y) / diffTime * 10000;
+                float speedZ = Math.abs(z - last_z) / diffTime * 10000;
+
+
+                if(!stall){
+                    if(speed < speedZ && speedZ > SHAKE_THRESHOLD){
+                        if(shakeZ){
+                            if (--index < 0) {
+                                index = 0;
+                            } else {
+                                image.setImageBitmap(Gallery.imageGallery.get(index));
+                            }
+                            shakeZ = false;
+                            shake = false;
+                            stall = true;
+                            startTime = curTime;
+                        }else{
+                            shake = false;
+                            shakeZ = true;
+                        }
+                    }else if (speed > SHAKE_THRESHOLD) {
+                        Log.d("Speed", "" + speed);
+
+                        if(shake){
+                            if (++index >= size) {
+                                index = size - 1;
+                            } else {
+                                image.setImageBitmap(Gallery.imageGallery.get(index));
+                            }
+                            shake = false;
+                            shakeZ = false;
+                            stall = true;
+
+                            startTime = curTime;
+                        }else{
+                            shake = true;
+                            shakeZ = false;
+                        }
+                    }
+                }
+
+
+                last_x = x;
+                last_y = y;
+                last_z = z;
+            }
+
+
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(int sensor, int accuracy) {
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        sensorMgr.unregisterListener(this);
+    }
 
     // Motion Detector for swiping images.
     private class OnSwipeTouchListener implements View.OnTouchListener {
@@ -103,20 +216,19 @@ public class ViewImage extends AppCompatActivity {
         }
 
         public void onSwipeRight() {
-            if(--index < 0){
+            if (--index < 0) {
                 index = 0;
+            } else {
+                image.setImageBitmap(Gallery.imageGallery.get(index));
             }
-
-            image.setImageBitmap(Gallery.imageGallery.get(index));
         }
-
         public void onSwipeLeft() {
-            if(++index >= size){
+            if (++index >= size) {
                 index = size - 1;
+            } else {
+                image.setImageBitmap(Gallery.imageGallery.get(index));
             }
-            image.setImageBitmap(Gallery.imageGallery.get(index));
         }
-
         public void onSwipeTop() {
         }
 

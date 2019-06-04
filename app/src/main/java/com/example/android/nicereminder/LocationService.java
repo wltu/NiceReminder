@@ -215,7 +215,7 @@ public class LocationService extends Service {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.nicereminder)
                 .setContentTitle("Location Gallery")
-                .setContentText("You have been here before! CLick here to view the gallery from this location")
+                .setContentText("You have been here before! Click here to view the gallery from this location!")
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setPriority(Notification.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent);
