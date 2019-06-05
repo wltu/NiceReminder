@@ -29,3 +29,7 @@
  Final work, fix any bugs left on the application and organize the codebase.
  
 #### Project Demo (6/5):
+ For the last week, many bugs of the application were fixed and code was cleaned up a bit. A new feature on the image viewer was also added. The accelerometer sensor was used to detect shaking the phone to move through the images.
+ 
+### Final Project Presentation
+[Nice Reminder Presentation](https://onedrive.live.com/view.aspx?resid=AD0A5DFAE55D6C1!18803&ithint=file%2cpptx&authkey=!AInncYxixy7ze70 "Nice Reminder")
