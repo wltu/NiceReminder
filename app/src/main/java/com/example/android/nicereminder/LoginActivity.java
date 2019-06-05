@@ -239,7 +239,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             DatabaseReference myRef = database.getReference("user").child(mAuth.getCurrentUser().getEmail().replace('.', ' ')).child("name");
                             myRef.setValue(mNameView.getText().toString());
 
-
                             MainScreen.Login();
                             MainScreen.UpdateAccountStatus(true);
                         } else {

@@ -134,14 +134,7 @@ public class MainScreen extends AppCompatActivity
                         stopService(downloadIntent);
                         if (mAuth.getCurrentUser() != null && (restart | inGallery)) {
                             try {
-                                delete_setting.setVisible(true);
-
-                                inGallery = true;
-                                Bundle bundle = new Bundle();
-                                bundle.putString("files", files);
-                                Gallery fragmet = new Gallery();
-                                fragmet.setArguments(bundle);
-                                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                                showGallery();
                             } catch (IllegalStateException e) {
                                 delete_setting.setVisible(false);
                             }
@@ -268,6 +261,7 @@ public class MainScreen extends AppCompatActivity
         if(logined){
             fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, new HomePage()).commit();
             logined = false;
+            getLocationGallery();
         }
     }
 
@@ -346,12 +340,7 @@ public class MainScreen extends AppCompatActivity
 
                             delete_setting.setVisible(true);
 
-                            Bundle bundle = new Bundle();
-                            bundle.putString("files", files);
-                            Gallery fragmet = new Gallery();
-                            fragmet.setArguments(bundle);
-
-                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                            showGallery();
 
                             delete_setting.setTitle(R.string.action_delete);
                             delete_setting_button.setVisible(false);
@@ -428,12 +417,7 @@ public class MainScreen extends AppCompatActivity
                 inGallery = true;
                 delete_setting.setVisible(true);
 
-                Bundle bundle = new Bundle();
-                bundle.putString("files", files);
-                Gallery fragmet = new Gallery();
-                fragmet.setArguments(bundle);
-
-                fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                showGallery();
             }
         } else if (id == R.id.nav_manage) {
             setDeleteOption();
@@ -503,22 +487,30 @@ public class MainScreen extends AppCompatActivity
         super.onActivityResult(requestCode, resultCode, data);
 
         // Get Camera Result
-        if(requestCode == 1 && resultCode == RESULT_OK){
-            uploadIntent =  new Intent(context, DownloadService.class);
-            uploadIntent.setAction("upload");
-            uploadIntent.putExtra("files", files);
-            uploadIntent.putExtra("image", mCameraFileName);
-            uploadIntent.putExtra("name", newPicFile);
-            uploadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
-            uploadIntent.putExtra("longitude",("" + longitude).replace('.', ' '));
+        if(requestCode == 1){
+
+            if(resultCode == RESULT_OK){
+                uploadIntent =  new Intent(context, DownloadService.class);
+                uploadIntent.setAction("upload");
+                uploadIntent.putExtra("files", files);
+                uploadIntent.putExtra("image", mCameraFileName);
+                uploadIntent.putExtra("name", newPicFile);
+                uploadIntent.putExtra("latitude", ("" + latitude).replace('.', ' '));
+                uploadIntent.putExtra("longitude",("" + longitude).replace('.', ' '));
 
 
-            try {
-                stopService(downloadIntent);
-            } catch(NullPointerException e) {
-                e.printStackTrace();
+                try {
+                    stopService(downloadIntent);
+                } catch(NullPointerException e) {
+                    e.printStackTrace();
+                }
+                startService(uploadIntent);
+
+                takePicture();
+            }else{
+                showGallery();
             }
-            startService(uploadIntent);
+
         }
         // Get Change Profile Picture Result
         else if(requestCode == 2 && resultCode == RESULT_OK){
@@ -548,6 +540,18 @@ public class MainScreen extends AppCompatActivity
                 }
             }
         }
+    }
+
+    private void showGallery() {
+        delete_setting.setVisible(true);
+        inGallery = true;
+
+        Bundle bundle = new Bundle();
+        bundle.putString("files", files);
+        Gallery fragmet = new Gallery();
+        fragmet.setArguments(bundle);
+
+        fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
     }
 
     // Permission Granted Event
@@ -584,14 +588,8 @@ public class MainScreen extends AppCompatActivity
                         Gallery.imageGallery.clear();
 
                         if(inGallery){
-                            Bundle bundle = new Bundle();
-                            bundle.putString("files", files);
-                            Gallery fragmet = new Gallery();
-                            fragmet.setArguments(bundle);
-
-                            fragmentManager.beginTransaction().replace(R.id.activity_mainscreen, fragmet).commit();
+                            showGallery();
                         }
-
 
                         newLocation = false;
                     } else {
@@ -738,7 +736,7 @@ public class MainScreen extends AppCompatActivity
         logined = true;
     }
 
-    // Update variabled based on signin status
+    // Update variables based on signin status
     public static void UpdateAccountStatus(boolean signined){
         signup.setVisible(!signined);
         signup_setting.setVisible(!signined);
@@ -828,6 +826,10 @@ public class MainScreen extends AppCompatActivity
             user_image.setImageResource(R.mipmap.ic_launcher_round);
             user_name.setText(R.string.nav_header_title);
             user_email.setText(R.string.nav_header_subtitle);
+
+            Gallery.fileNames.clear();
+            Gallery.imageGallery.clear();
+            files = null;
         }
     }
 
